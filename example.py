@@ -17,9 +17,9 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
     aux_button = joy2.button(3)
     aux_button_6 = joy2.button(6)
 
-    left_motors = roboRIO.talon(4) - roboRIO.talon(5) + roboRIO.talon(6)
-    right_motors = - roboRIO.talon(1) - roboRIO.talon(2) - roboRIO.talon(3)
-    shooter_intake = roboRIO.talon(8) * -1
+    left_motors = roboRIO.talon_sr(4) - roboRIO.talon_sr(5) + roboRIO.talon_sr(6)
+    right_motors = - roboRIO.talon_sr(1) - roboRIO.talon_sr(2) - roboRIO.talon_sr(3)
+    shooter_intake = roboRIO.talon_sr(8) * -1
     shooter_left = roboRIO.can.talon_simple(9) * -1
     shooter_right = roboRIO.can.talon_simple(8)
     shooter = shooter_left + shooter_right

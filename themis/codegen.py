@@ -123,4 +123,6 @@ def ref(obj):
             return "(%s,)" % ref(obj[0])
         else:
             return "(%s)" % ", ".join(ref(element) for element in obj)
+    elif hasattr(obj, "get_reference"):
+        return obj.get_reference()
     raise TypeError("Cannot construct reference to: %s of type %s" % (obj, type(obj)))

@@ -16,6 +16,9 @@ class FloatOutput(abc.ABC):
     def send_default_value(self, value: float):
         pass
 
+    def filter(self, filter_ref, *args) -> "FloatOutput":
+        return FilterFloatOutput(self, filter_ref, args)
+
 
 class FloatInput(abc.ABC):
     @abc.abstractmethod
@@ -85,6 +88,7 @@ class FilterFloatInput(FloatInput):
 
     def send(self, output: FloatOutput):
         # no super call because the invoked send does it for us.
+        # TODO: optimize this so that we don't redo the filtering operation for each target
         self._base.send(FilterFloatOutput(output, self._filter, self._args))
 
 
