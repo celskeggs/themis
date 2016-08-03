@@ -13,6 +13,7 @@ class Joystick(abc.ABC):
     def button(self, button_num):  # 1-indexed
         pass
 
+
 class DeadzoneJoystick(Joystick):
     def __init__(self, base_joystick, zone):
         self._joy = base_joystick

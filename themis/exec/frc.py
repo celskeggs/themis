@@ -13,11 +13,16 @@ stick_button_counts = [0] * JOYSTICK_NUM
 cffi_stub = None
 ds_ready_cond = threading.Lock()
 ds_ready = True
-ds_dispatch_list = []
+ds_dispatch_event = None
 
 
 def ds_begin():
     threading.Thread(target=ds_mainloop).start()
+
+
+def ds_set_event(event):
+    global ds_dispatch_event
+    ds_dispatch_event = event
 
 
 def ds_mainloop():
@@ -41,16 +46,11 @@ def ds_mainloop():
                 ds_ready = False
 
 
-def ds_dispatch_register(target):
-    ds_dispatch_list.append(target)
-
-
 def ds_dispatch():
     global ds_ready
     with ds_ready_cond:
         ds_ready = True
-    for target in ds_dispatch_list:
-        target()
+    ds_dispatch_event()
 
 
 def get_joystick_axis(joy_i: int, axis: int) -> float:
