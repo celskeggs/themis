@@ -28,12 +28,10 @@ class Joystick(themis.joystick.Joystick):
         self._buttons = [self._make_button(i) for i in range(themis.exec.frc.MAX_BUTTON_NUM)]
 
     def _make_axis(self, i):
-        return themis.channelgen.poll_derive_float(self._update, themis.exec.frc.get_joystick_axis,
-                                                   args=(self._index, i))
+        return themis.channelgen.poll_derive_float(self._update, themis.exec.frc.get_joystick_axis, args=(self._index, i))
 
     def _make_button(self, i):
-        return themis.channelgen.poll_derive_bool(self._update, themis.exec.frc.get_joystick_button,
-                                                  args=(self._index, i))
+        return themis.channelgen.poll_derive_bool(self._update, themis.exec.frc.get_joystick_button, args=(self._index, i))
 
     def axis(self, axis_num):
         return self._axes[axis_num - 1]

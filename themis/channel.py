@@ -103,6 +103,16 @@ class FloatInput(abc.ABC):
             return self.filter(themis.exec.filters.multiply, other)
         elif isinstance(other, FloatInput):
             return self.operate(themis.exec.filters.multiply, other)
+        else:
+            raise NotImplemented
+
+    def __rmul__(self, other):
+        if isinstance(other, (int, float)):
+            return self.filter(themis.exec.filters.multiply, other)
+        elif isinstance(other, FloatInput):
+            return other.operate(themis.exec.filters.multiply, self)
+        else:
+            raise NotImplemented
 
 
 class FloatOutput(abc.ABC):
