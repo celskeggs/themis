@@ -16,6 +16,10 @@ class BooleanOutput(abc.ABC):
 
 
 class BooleanInput(abc.ABC):
+    def __init__(self):
+        super().__init__()
+        self._press, self._release = None, None
+
     def send(self, output: BooleanOutput) -> None:
         output.send_default_value(self.default_value())
         self._send(output)
@@ -27,6 +31,35 @@ class BooleanInput(abc.ABC):
     @abc.abstractmethod
     def default_value(self) -> bool:
         pass
+
+    def _gen_change_checker(self, press: bool) -> "themis.channel.event.EventInput":
+        cell = themis.channel.event.EventCell()
+        ref = "change%d" % themis.codegen.next_uid()
+        themis.codegen.add_code(
+            "last_%s = %s\ndef %s(bv):\n\tif bv == last_%s: return\n\tlast_%s = bv\n\tif bv != %s: return\n\t%s()" %
+            (ref, self.default_value(), ref, ref, ref, press, cell))
+        return cell
+
+    @property
+    def press(self) -> "themis.channel.event.EventInput":
+        if self._press is None:
+            self._press = self._gen_change_checker(press=True)
+        return self._press
+
+    @property
+    def release(self) -> "themis.channel.event.EventInput":
+        if self._release is None:
+            self._release = self._gen_change_checker(press=False)
+        return self._release
+
+    # TODO: are these aliases useful?
+    @property
+    def become_true(self):
+        return self.press
+
+    @property
+    def become_false(self):
+        return self.release
 
 
 # TODO: deduplicate identical sets here and in FloatCell?
@@ -76,6 +109,7 @@ def always_boolean(value):
 
 class FixedBooleanInput(BooleanInput):
     def __init__(self, value: bool):
+        super().__init__()
         self._value = value
 
     def default_value(self):

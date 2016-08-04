@@ -84,6 +84,7 @@ def get_prop(key):
 
 class Generator(abc.ABC):
     def __init__(self):
+        super().__init__()
         add_code_generator(self._generate_code)
 
     @abc.abstractmethod
