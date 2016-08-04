@@ -29,6 +29,8 @@ class BooleanInput(abc.ABC):
         pass
 
 
+# TODO: deduplicate identical sets here and in FloatCell?
+
 class BooleanCell(themis.codegen.RefGenerator, BooleanInput, BooleanOutput):
     def __init__(self, value=False):
         super().__init__()
@@ -51,7 +53,6 @@ class BooleanCell(themis.codegen.RefGenerator, BooleanInput, BooleanOutput):
         yield "def %s(bv: bool) -> None:" % ref
         for target in self._targets:
             yield "\t%s(bv)" % target.get_reference()
-
 
 
 def always_boolean(value):

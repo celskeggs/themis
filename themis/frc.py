@@ -1,16 +1,63 @@
 import typing
-import themis.codehelpers
+
 import themis.channel
-import themis.codeinit
 import themis.codegen
+import themis.codehelpers
+import themis.codeinit
 import themis.exec
-import themis.pwm
 import themis.joystick
+import themis.pwm
+import themis.timers
 
 
 class RoboRIO:
-    def __init__(self):
+    def __init__(self):  # we have the required accessors mimic the actual route to a device. good idea? not sure.
         self.driver_station = DriverStation()
+        self.can = CAN()
+        self.pwm = PWM()
+        self.gpio = GPIO()
+
+
+# TODO: use appropriate exceptions for argument ranges instead of assertions
+
+
+class GPIO:
+    UNASSIGNED = 0
+    INPUT = 1
+    OUTPUT = 2
+
+    def __init__(self):
+        self._gpio_assignments = [GPIO.UNASSIGNED] * themis.exec.frc.GPIO_NUM
+        self._next_interrupt = 0
+        self._poll_event = themis.timers.ticker(millis=20)
+
+    def _alloc_interrupt(self) -> int:
+        if self._next_interrupt >= themis.exec.frc.INTERRUPT_NUM:
+            raise Exception("Too many interrupts allocated - can only allocate %d GPIO inputs with interrupts" %
+                            themis.exec.frc.INTERRUPT_NUM)
+        last = self._next_interrupt
+        self._next_interrupt += 1
+        return last
+
+    def input(self, gpio_pin, interrupt=False) -> themis.channel.BooleanInput:
+        assert self._gpio_assignments[gpio_pin] == GPIO.UNASSIGNED
+        self._gpio_assignments[gpio_pin] = GPIO.INPUT
+        if interrupt:
+            interrupt_id = self._alloc_interrupt()
+            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_interrupt),
+                                          themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin, interrupt_id))
+            bool = themis.channel.BooleanCell()
+            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_start_interrupt),
+                                          themis.codeinit.Phase.PHASE_BEGIN, args=(gpio_pin, interrupt_id, bool))
+            return bool
+        else:
+            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_poll),
+                                          themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin,))
+            return themis.codehelpers.poll_boolean(self._poll_event, themis.exec.frc.gpio_poll_input, args=(gpio_pin,))
+
+
+class PWM:
+    def __init__(self):
         themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.pwm_init_config),
                                       themis.codeinit.Phase.PHASE_INIT_IO)
 
@@ -43,10 +90,29 @@ class RoboRIO:
         return themis.pwm.filter_to(specs, self.pwm_raw(pwm_id, specs.frequency_hz, latch_pwm_zero=latch_pwm_zero))
 
     def pwm_raw(self, pwm_id: int, frequency: float, latch_pwm_zero: bool = False) -> themis.channel.FloatOutput:
+        assert 0 <= pwm_id < themis.exec.frc.PWM_NUM
         squelch = themis.exec.frc.pwm_frequency_to_squelch(frequency)
         themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.pwm_init), themis.codeinit.Phase.PHASE_INIT_IO,
                                       args=(pwm_id, squelch, latch_pwm_zero))
         return themis.codehelpers.push_float(themis.exec.frc.pwm_update, extra_args=(pwm_id,))
+
+
+class CAN:  # TODO: implement!
+    def __init__(self):
+        # TODO: support multiple PCMs
+        self.pcm = PCM(0)
+
+
+class PCM:
+    def __init__(self, pcm_id):
+        assert 0 <= pcm_id < themis.exec.frc.PCM_NUM
+        self._id = pcm_id
+
+    def solenoid(self, solenoid_id):
+        assert 0 <= solenoid_id < themis.exec.frc.SOLENOID_NUM
+        themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.solenoid_init),
+                                      themis.codeinit.Phase.PHASE_INIT_IO, args=(self._id, solenoid_id))
+        return themis.codehelpers.push_boolean(themis.exec.frc.solenoid_update, extra_args=(self._id, solenoid_id))
 
 
 class DriverStation:

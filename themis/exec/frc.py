@@ -6,6 +6,10 @@ JOYSTICK_NUM = 6
 AXIS_NUM = 12
 MAX_BUTTON_NUM = 32
 PWM_NUM = 20
+PCM_NUM = 63
+SOLENOID_NUM = 8
+GPIO_NUM = 26
+INTERRUPT_NUM = 8
 
 stick_axes = [()] * JOYSTICK_NUM
 stick_povs = [()] * JOYSTICK_NUM
@@ -118,3 +122,63 @@ def pwm_update(millis: float, pwm_id: int):
     else:
         scaled_value = int(millis * PWM_MULTIPLIER + PWM_SHIFT)
         cffi_stub.PWMJNI.setPWM(pwm_id, scaled_value)
+
+
+solenoids = [[None] * SOLENOID_NUM for i in range(PCM_NUM)]
+
+
+def solenoid_init(pcm_id: int, solenoid_id: int):
+    assert solenoids[pcm_id][solenoid_id] is None
+    solenoids[pcm_id][solenoid_id] = cffi_stub.SolenoidJNI.initializeSolenoidPort(
+        cffi_stub.SolenoidJNI.getPortWithModule(pcm_id, solenoid_id))
+
+
+def solenoid_update(on: bool, pcm_id: int, solenoid_id: int):
+    port = solenoids[pcm_id][solenoid_id]
+    assert port is not None
+    cffi_stub.SolenoidJNI.setSolenoid(port, on)
+
+
+GPIOS = [None] * GPIO_NUM
+INTERRUPTS = [None] * INTERRUPT_NUM
+
+
+def gpio_init_input_poll(gpio_pin: int):
+    assert GPIOS[gpio_pin] is None
+    GPIOS[gpio_pin] = cffi_stub.DIOJNI.initializeDigitalPort(cffi_stub.JNIWrapper.getPort(gpio_pin))
+    cffi_stub.DIOJNI.allocateDIO(gpio_pin, True)  # True: as input
+
+
+def gpio_poll_input(gpio_pin: int):
+    port = GPIOS[gpio_pin]
+    assert port is not None
+    return cffi_stub.DIOJNI.getDIO(port)
+
+
+def gpio_init_input_interrupt(gpio_pin: int, interrupt_id: int):
+    assert INTERRUPTS[interrupt_id] is None
+    gpio_init_input_poll(gpio_pin)
+    interrupt_port = cffi_stub.InterruptJNI.initializeInterrupts(interrupt_id, True)  # True: synchronous
+    cffi_stub.InterruptJNI.requestInterrupts(interrupt_port, 0, gpio_pin, False)  # False: digital
+    cffi_stub.InterruptJNI.setInterruptUpSourceEdge(interrupt_port, True, True)  # Trues: both rising and falling edge
+    INTERRUPTS[interrupt_id] = interrupt_port
+
+
+def gpio_start_interrupt(gpio_pin: int, interrupt_id: int, callback):
+    interrupt_port = INTERRUPTS[interrupt_id]
+    assert interrupt_port is not None
+    gpio_port = GPIOS[gpio_pin]
+    assert gpio_port is not None
+    threading.Thread(target=gpio_interrupt_handler_thread, args=(gpio_port, interrupt_port, callback)).start()
+
+
+def gpio_interrupt_handler_thread(gpio_port, interrupt_port, callback):
+    last_value = None
+    while True:
+        # TODO: optimize based on timing out or not
+        # False: don't ignore previous. 10.0: time out in 10 seconds. Why is this here? 10 seconds is pretty arbitrary.
+        timed_out = cffi_stub.InterruptJNI.waitForInterrupt(interrupt_port, 10.0, False) == 0
+        value = cffi_stub.DIOJNI.getDIO(gpio_port)
+        if value != last_value:
+            last_value = value
+            themis.exec.runloop.queue_event(callback, value)

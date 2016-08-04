@@ -17,29 +17,32 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
     aux_button = joy2.button(3)
     aux_button_6 = joy2.button(6)
 
-    left_motors = roboRIO.talon_sr(4) - roboRIO.talon_sr(5) + roboRIO.talon_sr(6)
-    right_motors = - roboRIO.talon_sr(1) - roboRIO.talon_sr(2) - roboRIO.talon_sr(3)
-    shooter_intake = - roboRIO.talon_sr(8)
-    shooter_left = roboRIO.can.talon_simple(9) * -1
-    shooter_right = roboRIO.can.talon_simple(8)
-    shooter = shooter_left + shooter_right
+    left_motors = roboRIO.pwm.talon_sr(4) - roboRIO.pwm.talon_sr(5) + roboRIO.pwm.talon_sr(6)
+    right_motors = - roboRIO.pwm.talon_sr(1) - roboRIO.pwm.talon_sr(2) - roboRIO.pwm.talon_sr(3)
+    shooter_intake = - roboRIO.pwm.talon_sr(8)
+    # TODO: implement CAN
+    # shooter_left = roboRIO.can.talon_simple(9)
+    # shooter_right = roboRIO.can.talon_simple(8)
+    shooter_left = roboRIO.pwm.talon_sr(9)
+    shooter_right = roboRIO.pwm.talon_sr(10)
+    shooter = shooter_right - shooter_left
 
     shifter = roboRIO.can.pcm.solenoid(1)
     ball_sensor = roboRIO.gpio.input(1, interrupt=True)
 
-    shifting_state = themis.Boolean(value=True)
-    shifting_state.control(shifter)
+    shifting_state = themis.BooleanCell(value=True)
+    shifting_state.send(shifter)
     shifting_state.toggle_when(ctrl_button.press)
 
     themis.drive.tank_drive(ctrl_left_yaxis, ctrl_right_yaxis,
                             left_motors, right_motors)
 
-    contains_ball = themis.Boolean(value=False)
+    contains_ball = themis.BooleanCell(value=False)
     contains_ball.set_true_when(ball_sensor.release)
     contains_ball.set_false_when(aux_trigger.press)
     contains_ball.set_false_when(aux_button.press)
 
-    aiming = themis.Boolean(value=False)
+    aiming = themis.BooleanCell(value=False)
     aiming.toggle_when(aux_button_6.press)
     (aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).control(
         shooter_right)
