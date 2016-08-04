@@ -6,6 +6,10 @@ __all__ = ["BooleanOutput", "BooleanInput", "BooleanCell", "always_boolean"]
 
 
 class BooleanOutput(abc.ABC):
+    def __init__(self):
+        super().__init__()
+        self._set_true, self._set_false = None, None
+
     @abc.abstractmethod
     def get_reference(self) -> str:
         pass
@@ -13,6 +17,24 @@ class BooleanOutput(abc.ABC):
     @abc.abstractmethod
     def send_default_value(self, value: bool):
         pass
+
+    @property
+    def set_true(self) -> "themis.channel.event.EventOutput":
+        if self._set_true is None:
+            import themis.codehelpers
+            ref = "set_true_%s" % self.get_reference
+            themis.codegen.add_code("def %s():\n\t%s(True)" % (ref, self.get_reference()))
+            self._set_true = themis.codehelpers.EventWrapper(ref)
+        return self._set_true
+
+    @property
+    def set_false(self) -> "themis.channel.event.EventOutput":
+        if self._set_false is None:
+            import themis.codehelpers
+            ref = "set_false_%s" % self.get_reference
+            themis.codegen.add_code("def %s():\n\t%s(False)" % (ref, self.get_reference()))
+            self._set_false = themis.codehelpers.EventWrapper(ref)
+        return self._set_false
 
 
 class BooleanInput(abc.ABC):

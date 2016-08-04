@@ -38,12 +38,12 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
                             left_motors, right_motors)
 
     contains_ball = themis.BooleanCell(value=False)
-    contains_ball.set_true_when(ball_sensor.release)
-    contains_ball.set_false_when(aux_trigger.press)
-    contains_ball.set_false_when(aux_button.press)
+    contains_ball.set_true.when(ball_sensor.release)
+    contains_ball.set_false.when(aux_trigger.press)
+    contains_ball.set_false.when(aux_button.press)
 
     aiming = themis.BooleanCell(value=False)
-    aiming.toggle_when(aux_button_6.press)
+    aiming.toggle.when(aux_button_6.press)
     (aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).control(
         shooter_right)
     (- aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).control(
