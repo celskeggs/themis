@@ -1,5 +1,5 @@
 import abc
-
+import themis.channel.event
 import themis.codegen
 
 __all__ = ["BooleanOutput", "BooleanInput", "BooleanCell", "always_boolean"]
@@ -37,6 +37,7 @@ class BooleanCell(themis.codegen.RefGenerator, BooleanInput, BooleanOutput):
         self._default_value = value
         self._default_value_queried = False
         self._targets = []
+        self._toggle = None
 
     def default_value(self):
         self._default_value_queried = True
@@ -50,9 +51,23 @@ class BooleanCell(themis.codegen.RefGenerator, BooleanInput, BooleanOutput):
             assert not self._default_value_queried, "Default value changed after usage!"
 
     def generate_ref_code(self, ref):
+        yield "value_%s = %s" % (ref, self._default_value)
         yield "def %s(bv: bool) -> None:" % ref
+        yield "\tglobals value_%s" % ref
+        yield "\tif bv == value_%s: return" % ref
+        yield "\tvalue_%s = bv" % ref
         for target in self._targets:
             yield "\t%s(bv)" % target.get_reference()
+
+    @property
+    def toggle(self) -> "themis.channel.event.EventOutput":
+        if self._toggle is None:
+            import themis.codehelpers  # here to avoid issues with circular references
+            ref = self.get_reference()
+            toggle_ref = "toggle_%s" % ref
+            themis.codegen.add_code("def %s():\n\t%s(not value_%s)" % (toggle_ref, ref, ref))
+            self._toggle = themis.codehelpers.EventWrapper(toggle_ref)
+        return self._toggle
 
 
 def always_boolean(value):

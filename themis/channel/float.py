@@ -102,11 +102,12 @@ class FloatInput(abc.ABC):
 
 
 class FloatCell(themis.codegen.RefGenerator, FloatInput, FloatOutput):
-    def __init__(self, value=0.0):
+    def __init__(self, value=0.0):  # TODO: perhaps we should initialize to NaN instead?
         super().__init__()
         self._default_value = value
         self._default_value_queried = False
         self._targets = []
+        themis.codegen.add_import("math")  # for math.isnan in generate_ref_code
 
     def default_value(self):
         self._default_value_queried = True
@@ -121,7 +122,11 @@ class FloatCell(themis.codegen.RefGenerator, FloatInput, FloatOutput):
             assert not self._default_value_queried, "Default value changed after usage!"
 
     def generate_ref_code(self, ref):
+        yield "value_%s = %s" % (ref, self._default_value)
         yield "def %s(fv: float) -> None:" % ref
+        yield "\tglobals value_%s" % ref
+        yield "\tif fv == value_%s or (math.isnan(fv) and math.isnan(value_%s)): return" % (ref, ref)
+        yield "\tvalue_%s = fv" % ref
         for target in self._targets:
             yield "\t%s(fv)" % target.get_reference()
 

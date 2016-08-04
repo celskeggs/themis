@@ -10,6 +10,9 @@ class EventOutput(abc.ABC):
     def get_reference(self) -> str:
         pass
 
+    def when(self, event: "EventInput"):
+        event.send(self)
+
 
 class EventInput(abc.ABC):
     def send(self, output: EventOutput) -> None:

@@ -32,7 +32,7 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
 
     shifting_state = themis.BooleanCell(value=True)
     shifting_state.send(shifter)
-    shifting_state.toggle_when(ctrl_button.press)
+    shifting_state.toggle.when(ctrl_button.press)
 
     themis.drive.tank_drive(ctrl_left_yaxis, ctrl_right_yaxis,
                             left_motors, right_motors)
