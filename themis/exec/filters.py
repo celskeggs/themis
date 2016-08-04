@@ -1,12 +1,32 @@
 import math
 
 
-def deadzone(value, zone):
+def deadzone(value: float, zone: float) -> float:
     return value if abs(value) >= zone else 0.0
 
 
-def multiply(value, mul):
-    return value * mul
+def add(a: float, b: float) -> float:
+    return a + b
+
+
+def subtract(a: float, b: float) -> float:
+    return a - b
+
+
+def multiply(a: float, b: float) -> float:
+    return a * b
+
+
+def divide(a: float, b: float) -> float:
+    try:
+        return a / b
+    except ZeroDivisionError:
+        assert b == 0  # TODO: remove this assert after confirming behavior
+        return math.nan if a == 0 else math.copysign(math.inf, a)
+
+
+def negate(x: float) -> float:
+    return -x
 
 
 def operator(cached_inputs, output, operator, arguments):

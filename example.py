@@ -19,7 +19,7 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
 
     left_motors = roboRIO.talon_sr(4) - roboRIO.talon_sr(5) + roboRIO.talon_sr(6)
     right_motors = - roboRIO.talon_sr(1) - roboRIO.talon_sr(2) - roboRIO.talon_sr(3)
-    shooter_intake = roboRIO.talon_sr(8) * -1
+    shooter_intake = - roboRIO.talon_sr(8)
     shooter_left = roboRIO.can.talon_simple(9) * -1
     shooter_right = roboRIO.can.talon_simple(8)
     shooter = shooter_left + shooter_right

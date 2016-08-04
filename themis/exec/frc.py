@@ -99,7 +99,6 @@ def pwm_init_config():
     global PWM_MULTIPLIER, PWM_SHIFT
     PWM_MULTIPLIER = PWM_CLOCK_KHZ / cffi_stub.DIOJNI.getLoopTiming()
     PWM_SHIFT = PWM_STEPS - 1 - PWM_GEN_CENTER * PWM_MULTIPLIER
-    # expression:
 
 
 def pwm_init(pwm_id: int, squelch: int, latch_pwm_zero: float) -> None:
