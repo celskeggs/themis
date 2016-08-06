@@ -10,6 +10,7 @@ class FloatOutput:
     def __init__(self, reference: str):
         assert isinstance(reference, str)
         self._ref = reference
+        self._sets = {}
 
     def get_float_ref(self) -> str:
         return self._ref
@@ -86,6 +87,17 @@ class FloatOutput:
     def __neg__(self) -> "FloatOutput":
         return self.filter(themis.exec.filters.negate)
 
+    def set_event(self, value: float) -> "themis.channel.event.EventOutput":
+        assert isinstance(value, (int, float))
+        value = float(value)
+        if value not in self._sets:
+            @themis.channel.event.event_build
+            def event_set(ref: str):
+                yield "%s(%s)" % (self.get_float_ref(), repr(value))
+
+            self._sets[value] = event_set
+        return self._sets[value]
+
 
 class FloatInput:
     def __init__(self, targets: list):
@@ -96,6 +108,9 @@ class FloatInput:
         assert isinstance(output, FloatOutput)
         # TODO: default value?
         self._targets.append(output.get_float_ref())
+
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
 
     def filter(self, filter_func, pre_args=(), post_args=()) -> "FloatInput":
         cell_out, cell_in = float_cell(0)  # TODO: default value

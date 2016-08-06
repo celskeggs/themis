@@ -1,4 +1,5 @@
 import typing
+import themis.exec
 
 import themis.channel.event
 import themis.codegen
@@ -17,6 +18,18 @@ class BooleanOutput:
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
+
+    def filter(self, filter_func, pre_args=(), post_args=()) -> "BooleanOutput":
+        assert isinstance(pre_args, tuple) and isinstance(post_args, tuple)
+        filter_ref = themis.codegen.ref(filter_func)
+        pre_args = themis.codegen.ref(pre_args)
+        post_args = themis.codegen.ref(post_args)
+
+        @boolean_build
+        def update(ref: str):
+            yield "%s(%s(*%s, value, %s))" % (self.get_boolean_ref(), filter_ref, pre_args, post_args)
+
+        return update
 
     @property
     @themis.util.memoize_field
@@ -49,6 +62,11 @@ class BooleanInput:
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
+
+    def filter(self, filter_func, pre_args=(), post_args=()) -> "BooleanInput":
+        cell_out, cell_in = boolean_cell(False)  # TODO: default value
+        self.send(cell_out.filter(filter_func=filter_func, pre_args=pre_args, post_args=post_args))
+        return cell_in
 
     @themis.util.memoize_field
     def _press_and_release(self) -> "typing.Tuple[themis.channel.event.EventInput, themis.channel.event.EventInput]":
@@ -122,6 +140,11 @@ class BooleanInput:
         else:
             # TODO: implement for booleans and discretes
             raise TypeError("when_false is of an invalid type: %s" % type(when_false))
+
+    @property
+    @themis.util.memoize_field
+    def inverted(self):
+        return self.filter(themis.exec.filters.invert)
 
 
 def boolean_build(body_gen) -> BooleanOutput:

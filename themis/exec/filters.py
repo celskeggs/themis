@@ -29,6 +29,10 @@ def negate(x: float) -> float:
     return -x
 
 
+def invert(x: bool) -> bool:
+    return not x
+
+
 def operator(cached_inputs, output, operator, arguments):
     output(operator(*cached_inputs, *arguments))
 
