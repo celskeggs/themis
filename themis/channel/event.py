@@ -1,38 +1,56 @@
-import abc
+import typing
 
 import themis.codegen
 
-__all__ = ["EventOutput", "EventInput", "EventCell"]
+__all__ = ["EventOutput", "EventInput", "event_cell"]
 
 
-class EventOutput(abc.ABC):
-    @abc.abstractmethod
-    def get_reference(self) -> str:
-        pass
+class EventOutput:
+    def __init__(self, reference: str):
+        assert isinstance(reference, str)
+        self._ref = reference
 
-    def when(self, event: "EventInput"):
+    def get_event_ref(self) -> str:
+        return self._ref
+
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
+
+    def when(self, event: "EventInput") -> None:
         event.send(self)
 
 
-class EventInput(abc.ABC):
+class EventInput:
+    def __init__(self, targets: list):
+        assert isinstance(targets, list)
+        self._targets = targets
+
     def send(self, output: EventOutput) -> None:
-        # split up entirely for consistency with BooleanInput and FloatInput
-        self._send(output)
+        assert isinstance(output, EventOutput)
+        self._targets.append(output.get_event_ref())
 
-    @abc.abstractmethod
-    def _send(self, output: EventOutput) -> None:
-        pass
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
 
 
-class EventCell(themis.codegen.RefGenerator, EventInput, EventOutput):
-    def __init__(self):
-        super().__init__()
-        self._targets = []
-
-    def _send(self, target: EventOutput):
-        self._targets.append(target)
-
-    def generate_ref_code(self, ref):
+def event_build(body_gen) -> EventOutput:
+    def gen(ref: str):
         yield "def %s() -> None:" % ref
-        for target in self._targets:
-            yield "\t%s()" % target.get_reference()
+        for line in body_gen(ref):
+            yield "\t%s" % (line,)
+
+    return EventOutput(themis.codegen.add_code_gen_ref(gen))
+
+
+def event_cell() -> typing.Tuple[EventOutput, EventInput]:
+    targets = []
+
+    @event_build
+    def dispatch(ref: str):
+        if targets:
+            for target in targets:
+                yield "%s()" % (target,)
+        else:
+            yield "pass"
+
+    return dispatch, EventInput(targets)

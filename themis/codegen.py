@@ -1,4 +1,5 @@
 import abc
+import typing
 import importlib
 
 import themis.util
@@ -72,6 +73,18 @@ def add_code(code):
 
 def add_code_generator(gen):
     GenerationContext.get_context().add_code_generator(gen)
+
+
+def add_code_gen_ref(proc: typing.Callable[[str], typing.Generator[str, typing.Any, None]]) -> str:
+    ref = "ref%d" % next_uid()
+    add_code_generator(lambda: proc(ref))
+    return ref
+
+
+def add_variable(default_value):
+    ref = "var%d" % next_uid()
+    add_code("%s = %s" % (ref, default_value))
+    return ref
 
 
 def get_prop_init(key, default_producer):

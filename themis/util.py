@@ -1,4 +1,23 @@
 import threading
+import typing
+
+
+Self = typing.TypeVar("Self")
+T = typing.TypeVar("T")
+
+
+def memoize_field(gen: typing.Callable[[Self], T]) -> typing.Callable[[Self], T]:
+    attr = "_memoize_%s" % gen.__name__
+
+    def fetch(self):
+        value = getattr(self, attr, None)
+        if value is None:
+            value = gen()
+            setattr(self, attr, value)
+        return value
+
+    fetch.__name__ = gen.__name__
+    return fetch
 
 
 class Parameter:

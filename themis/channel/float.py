@@ -1,85 +1,105 @@
-import abc
 import typing
 
 import themis.codegen
 import themis.exec
 
-__all__ = ["FloatOutput", "FloatInput", "FloatCell", "always_float"]
+__all__ = ["FloatOutput", "FloatInput", "float_cell", "always_float"]
 
 
-class FloatOutput(abc.ABC):
-    @abc.abstractmethod
-    def get_reference(self) -> str:
-        pass
+class FloatOutput:
+    def __init__(self, reference: str):
+        assert isinstance(reference, str)
+        self._ref = reference
 
-    @abc.abstractmethod
-    def send_default_value(self, value: float):  # TODO: add assertions to targets to ensure output isolation
-        pass
+    def get_float_ref(self) -> str:
+        return self._ref
 
-    def filter(self, filter_ref, *args, pre_args=()) -> "FloatOutput":
-        return FilterFloatOutput(self, filter_ref, pre_args, args)
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
+
+    def filter(self, filter_func, *args, pre_args=()) -> "FloatOutput":
+        filter_ref = themis.codegen.ref(filter_func)
+        pre_args = themis.codegen.ref(pre_args)
+        args = themis.codegen.ref(args)
+
+        @float_build
+        def update(ref: str):
+            yield "%s(%s(*%s, value, %s))" % (self.get_float_ref(), filter_ref, pre_args, args)
+
+        return update
 
     # note: different ramping scale than the CCRE
     # TODO: handle default targets better
-    def add_ramping(self, change_per_second: float, update_rate_ms=None,
-                    default_target=0) -> "FloatOutput":
+    def add_ramping(self, change_per_second: float, update_rate_ms=None, default_target=0) -> "FloatOutput":
         import themis.timers
-        import themis.codehelpers
-        if update_rate_ms is None:
-            update_rate_ms = 10
+        update_rate_ms = update_rate_ms or 10
         ticker = themis.timers.ticker(update_rate_ms)
         max_change_per_update = (change_per_second * (update_rate_ms / 1000.0))
-        ref = "ramp%d" % themis.codegen.next_uid()
-        themis.codegen.add_code("target_%s = %s" % (ref, default_target))
-        themis.codegen.add_code("out_%s = %s" % (ref, default_target))
-        themis.codegen.add_code("def f_%s(fv):\n\ttarget_%s = fv" % (ref, ref))
-        themis.codegen.add_code("def e_%s(fv):\n\tout_%s = %s(out_%s, target_%s, %s)\n\t%s(out_%s)" % (
-            ref, ref, themis.codegen.ref(themis.exec.filters.ramping_update), ref, ref, max_change_per_update,
-            self.get_reference(), ref))
-        self.send_default_value(default_target)
-        ticker.send(themis.codehelpers.EventWrapper("e_%s" % ref))
-        return themis.codehelpers.FloatWrapper("f_%s" % ref)
 
-    def __add__(self, other):
+        ramp_target = themis.codegen.add_variable(default_target)
+        ramp_current = themis.codegen.add_variable(default_target)
+
+        @float_build
+        def update_target(ref: str):
+            yield "globals %s" % ramp_target
+            yield "%s = value" % ramp_target
+
+        @themis.channel.event.event_build
+        def update_ramping(ref: str):
+            yield "globals %s, %s" % (ramp_target, ramp_current)
+            yield "%s = %s(%s, %s, %s)" % (
+                ramp_current, themis.codegen.ref(themis.exec.filters.ramping_update), ramp_current, ramp_target,
+                max_change_per_update)
+            yield "%s(%s)" % (self.get_float_ref(), ramp_current)
+
+        ticker.send(update_ramping)
+        return update_target
+
+    def __add__(self, other: "FloatOutput") -> "FloatOutput":
+        if not isinstance(other, FloatOutput):
+            return NotImplemented
+
+        @float_build
+        def combined(ref: str):
+            yield "%s(value)" % self.get_float_ref()
+            yield "%s(value)" % other.get_float_ref()
+
+        return combined
+
+    def __radd__(self, other: "FloatOutput") -> "FloatOutput":
+        assert not isinstance(other, FloatOutput), "should not need to dispatch like that"
+        return NotImplemented
+
+    def __sub__(self, other: "FloatOutput") -> "FloatOutput":
         if isinstance(other, FloatOutput):
-            return CombinedFloatOutput(self, other)
+            return self + (-other)
         else:
             return NotImplemented
 
-    def __radd__(self, other):
+    def __rsub__(self, other: "FloatOutput") -> "FloatOutput":
         if isinstance(other, FloatOutput):
-            return CombinedFloatOutput(other, self)
+            return (-self) + other
         else:
             return NotImplemented
 
-    def __sub__(self, other):
-        if isinstance(other, FloatOutput):
-            return CombinedFloatOutput(self, -other)
-        else:
-            return NotImplemented
-
-    def __rsub__(self, other):
-        if isinstance(other, FloatOutput):
-            return CombinedFloatOutput(-self, other)
-        else:
-            return NotImplemented
-
-    def __neg__(self):
+    def __neg__(self) -> "FloatOutput":
         return self.filter(themis.exec.filters.negate)
 
 
-# TODO: make FloatCells cast to FloatInputs not be accessible as FloatOutputs.
-class FloatInput(abc.ABC):
-    @abc.abstractmethod
-    def send(self, output: FloatOutput) -> None:
-        output.send_default_value(self.default_value())
+class FloatInput:
+    def __init__(self, targets: list):
+        assert isinstance(targets, list)
+        self._targets = targets
 
-    @abc.abstractmethod
-    def default_value(self) -> float:
-        pass
+    def send(self, output: FloatOutput) -> None:
+        assert isinstance(output, FloatOutput)
+        # TODO: default value?
+        self._targets.append(output.get_float_ref())
 
     def filter(self, filter_ref, *args, pre_args=()) -> "FloatInput":
-        return FilterFloatInput(self, filter_ref, pre_args, args)
+        cell_out, cell_in = float_cell()  # TODO: default value
+        self.send(cell_out.filter(filter_ref=filter_ref, *args, pre_args=pre_args))
+        return cell_in
 
     def operation(self, filter_ref, other: "FloatInput", *args, pre_args=()) -> "FloatInput":
         import themis.codehelpers  # here to avoid issues with circular references
@@ -100,10 +120,10 @@ class FloatInput(abc.ABC):
 
     # note: different ramping scale than the CCRE
     def with_ramping(self, change_per_second: float, update_rate_ms=None) -> "FloatInput":
-        cell = FloatCell()
-        self.send(cell.add_ramping(change_per_second, update_rate_ms=update_rate_ms,
-                                   default_target=self.default_value()))
-        return cell
+        cell_out, cell_in = float_cell()
+        self.send(cell_out.add_ramping(change_per_second, update_rate_ms=update_rate_ms,
+                                       default_target=self.default_value()))
+        return cell_in
 
     def _arith_op(self, op, other, reverse):
         if isinstance(other, (int, float)):
@@ -147,95 +167,29 @@ class FloatInput(abc.ABC):
         return self.filter(themis.exec.filters.negate)
 
 
-class FloatCell(themis.codegen.RefGenerator, FloatInput, FloatOutput):
-    def __init__(self, value=0.0):  # TODO: perhaps we should initialize to NaN instead?
-        super().__init__()
-        self._default_value = value
-        self._default_value_queried = False
-        self._targets = []
-        themis.codegen.add_import("math")  # for math.isnan in generate_ref_code
+def float_build(body_gen) -> FloatOutput:
+    def gen(ref: str):
+        yield "def %s(value) -> None:" % ref
+        for line in body_gen(ref):
+            yield "\t%s" % (line,)
 
-    def default_value(self):
-        self._default_value_queried = True
-        return self._default_value
-
-    def send(self, target: FloatOutput):
-        super(FloatCell, self).send(target)
-        self._targets.append(target)
-
-    def send_default_value(self, value: float):
-        if value != self._default_value:
-            assert not self._default_value_queried, "Default value changed after usage!"
-
-    def generate_ref_code(self, ref):
-        yield "value_%s = %s" % (ref, self._default_value)
-        yield "def %s(fv: float) -> None:" % ref
-        yield "\tglobals value_%s" % ref
-        yield "\tif fv == value_%s or (math.isnan(fv) and math.isnan(value_%s)): return" % (ref, ref)
-        yield "\tvalue_%s = fv" % ref
-        for target in self._targets:
-            yield "\t%s(fv)" % target.get_reference()
+    return FloatOutput(themis.codegen.add_code_gen_ref(gen))
 
 
-class FilterFloatInput(FloatInput):
-    def __init__(self, base: FloatInput, filter_func, pre_args: typing.Sequence, post_args: typing.Sequence):
-        self._base = base
-        self._filter = filter_func
-        self._pre_args, self._post_args = pre_args, post_args
+def float_cell(default_value) -> typing.Tuple[FloatOutput, FloatInput]:
+    # TODO: use default_value
+    targets = []
 
-    def default_value(self):
-        return self._filter(*self._pre_args, self._base.default_value(), *self._post_args)
+    @float_build
+    def dispatch(ref: str):
+        if targets:
+            for target in targets:
+                yield "%s(value)" % (target,)
+        else:
+            yield "pass"
 
-    def send(self, output: FloatOutput):
-        # no super call because the invoked send does it for us.
-        # TODO: optimize this so that we don't redo the filtering operation for each target
-        self._base.send(FilterFloatOutput(output, self._filter, self._pre_args, self._post_args))
-
-
-class FilterFloatOutput(themis.codegen.RefGenerator, FloatOutput):
-    def __init__(self, base: FloatOutput, filter_func, pre_args: typing.Sequence, post_args: typing.Sequence):
-        super().__init__()
-        self._base = base
-        self._filter_ref = themis.codegen.ref(filter_func)
-        self._filter = filter_func
-        self._pre_args, self._post_args = pre_args, post_args
-        self._pre_arg_ref = themis.codegen.ref(pre_args)
-        self._post_arg_ref = themis.codegen.ref(post_args)
-
-    def send_default_value(self, value: float):
-        self._base.send_default_value(self._filter(*self._pre_args, value, *self._post_args))
-
-    def generate_ref_code(self, ref):
-        yield "def %s(fv):" % ref
-        yield "\t%s(%s(*%s, fv, *%s))" % (
-            self._base.get_reference(), self._filter_ref, self._pre_arg_ref, self._post_arg_ref)
+    return dispatch, FloatInput(targets)
 
 
 def always_float(value):
-    return FixedFloatInput(value)
-
-
-class FixedFloatInput(FloatInput):
-    def __init__(self, value: float):
-        self._value = value
-
-    def default_value(self):
-        return self._value
-
-    def send(self, output: FloatOutput):
-        super(FixedFloatInput, self).send(output)
-        # no changes, so we don't bother doing anything with it!
-
-
-class CombinedFloatOutput(FloatOutput):
-    def __init__(self, a: FloatOutput, b: FloatOutput):
-        self._a, self._b = a, b
-        self._ref = "combine%d" % themis.codegen.next_uid()
-        themis.codegen.add_code("def %s(fv):\n\t%s(fv)\n\t%s(fv)" % (self._ref, a.get_reference(), b.get_reference()))
-
-    def get_reference(self) -> str:
-        return self._ref
-
-    def send_default_value(self, value: float):
-        self._a.send_default_value(value)
-        self._b.send_default_value(value)
+    return float_cell(value)[1]
