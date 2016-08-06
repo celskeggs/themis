@@ -65,6 +65,17 @@ class DiscreteInput:
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
+    def is_value(self, value: str) -> "themis.channel.boolean.BooleanInput":
+        value_int = self.discrete_type.numeric(value)
+        cell_out, cell_in = themis.channel.boolean.boolean_cell(False)  # TODO: default value
+
+        @discrete_build(self.discrete_type)
+        def update(ref: str):
+            yield "%s(value == %s)" % (cell_out.get_boolean_ref(), value_int)
+
+        self.send(update)
+        return cell_in
+
 
 def discrete_build(discrete_type: Discrete):
     assert isinstance(discrete_type, Discrete)

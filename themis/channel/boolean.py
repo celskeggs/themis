@@ -140,7 +140,7 @@ class BooleanIO:
         self.output = output
         self.input = input
 
-    def __iter__(self):
+    def __iter__(self):  # TODO: get this to typecheck properly
         return iter((self.output, self.input))
 
     @property
@@ -162,6 +162,7 @@ class BooleanIO:
         return toggle
 
 
+# TODO: should we be doing deduplication in cells? probably.
 def boolean_cell(default_value) -> BooleanIO:
     # TODO: use default_value
     targets = []
