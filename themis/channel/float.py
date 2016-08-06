@@ -143,6 +143,9 @@ class FloatInput(abc.ABC):
     def __rtruediv__(self, other):
         return self._arith_op(themis.exec.filters.divide, other, True)
 
+    def __neg__(self):
+        return self.filter(themis.exec.filters.negate)
+
 
 class FloatCell(themis.codegen.RefGenerator, FloatInput, FloatOutput):
     def __init__(self, value=0.0):  # TODO: perhaps we should initialize to NaN instead?
