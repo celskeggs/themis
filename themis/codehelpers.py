@@ -1,4 +1,5 @@
 import themis.codegen
+import enum
 import themis.channel
 
 
@@ -23,6 +24,19 @@ class FloatWrapper(themis.channel.FloatOutput):
 
 class BooleanWrapper(themis.channel.BooleanOutput):
     def __init__(self, ref: str):
+        super().__init__()
+        self._ref = ref
+
+    def get_reference(self) -> str:
+        return self._ref
+
+    def send_default_value(self, value: float):
+        pass  # TODO: handle default value correctly
+
+
+class DiscreteWrapper(themis.channel.DiscreteOutput):
+    def __init__(self, ref: str, enum_type: enum.Enum):
+        super().__init__(enum_type)
         self._ref = ref
 
     def get_reference(self) -> str:
@@ -44,6 +58,16 @@ def poll_float(event: themis.channel.EventInput, poll_func, args) -> themis.chan
 def poll_boolean(event: themis.channel.EventInput, poll_func, args) -> themis.channel.BooleanInput:
     f = themis.channel.BooleanCell()
     newref = "pollb%d" % themis.codegen.next_uid()
+    themis.codegen.add_code("def %s():\n\t%s(%s(*%s))" %
+                            (newref, f.get_reference(), themis.codegen.ref(poll_func), themis.codegen.ref(args)))
+    event.send(EventWrapper(newref))
+    return f
+
+
+def poll_discrete(event: themis.channel.EventInput, poll_func, args, default_value: enum.Enum,
+                  enum_type: enum.Enum) -> themis.channel.DiscreteInput:
+    f = themis.channel.DiscreteCell(default_value, enum_type)
+    newref = "polld%d" % themis.codegen.next_uid()
     themis.codegen.add_code("def %s():\n\t%s(%s(*%s))" %
                             (newref, f.get_reference(), themis.codegen.ref(poll_func), themis.codegen.ref(args)))
     event.send(EventWrapper(newref))

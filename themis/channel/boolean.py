@@ -22,7 +22,7 @@ class BooleanOutput(abc.ABC):
     def set_true(self) -> "themis.channel.event.EventOutput":
         if self._set_true is None:
             import themis.codehelpers
-            ref = "set_true_%s" % self.get_reference
+            ref = "set_true_%s" % self.get_reference()
             themis.codegen.add_code("def %s():\n\t%s(True)" % (ref, self.get_reference()))
             self._set_true = themis.codehelpers.EventWrapper(ref)
         return self._set_true
@@ -31,7 +31,7 @@ class BooleanOutput(abc.ABC):
     def set_false(self) -> "themis.channel.event.EventOutput":
         if self._set_false is None:
             import themis.codehelpers
-            ref = "set_false_%s" % self.get_reference
+            ref = "set_false_%s" % self.get_reference()
             themis.codegen.add_code("def %s():\n\t%s(False)" % (ref, self.get_reference()))
             self._set_false = themis.codehelpers.EventWrapper(ref)
         return self._set_false

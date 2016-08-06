@@ -1,9 +1,7 @@
 from themis.channel.float import *
 from themis.channel.boolean import *
 from themis.channel.event import *
-
-
-# from themis.channel.discrete import * # TODO
+from themis.channel.discrete import *
 
 def always(value):
     if isinstance(value, (int, float)):

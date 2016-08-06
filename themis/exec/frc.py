@@ -2,6 +2,11 @@ import threading
 import math
 import themis.exec.runloop
 
+MODE_DISABLED = 0
+MODE_AUTONOMOUS = 1
+MODE_TELEOP = 2
+MODE_TESTING = 3
+
 JOYSTICK_NUM = 6
 AXIS_NUM = 12
 MAX_BUTTON_NUM = 32
@@ -20,6 +25,7 @@ cffi_stub = None
 ds_ready_cond = threading.Lock()
 ds_ready = True
 ds_dispatch_event = None
+robot_mode = MODE_DISABLED
 
 
 def ds_begin():
@@ -31,13 +37,45 @@ def ds_set_event(event):
     ds_dispatch_event = event
 
 
+def ds_calc_mode(word):
+    enabled = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_ENABLED) != 0
+    autonomous = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_AUTONOMOUS) != 0
+    test = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_TEST) != 0
+    eStop = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_ESTOP) != 0
+    dsAttached = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_DS_ATTACHED) != 0
+    # TODO: does including eStop here cause any issues?
+    if not enabled or not dsAttached or eStop:
+        return MODE_DISABLED
+    elif test:
+        return MODE_TESTING
+    elif autonomous:
+        return MODE_AUTONOMOUS
+    else:
+        return MODE_TELEOP
+
+
 def ds_mainloop():
-    global ds_ready
+    global ds_ready, robot_mode
     data_mutex = cffi_stub.HALUtil.initializeMutexNormal()
     data_semaphor = cffi_stub.HALUtil.initializeMultiWait()
     cffi_stub.FRCNetworkCommunicationsLibrary.setNewDataSem(data_semaphor)
     while True:
         cffi_stub.HALUtil.takeMultiWait(data_semaphor, data_mutex)
+
+        word = cffi_stub.FRCNetworkCommunicationsLibrary.NativeHALGetControlWord()
+        onFMS = (word & cffi_stub.FRCNetworkCommunicationsLibrary.HAL_FMS_ATTACHED) != 0
+        newmode = ds_calc_mode(word)
+        if newmode != robot_mode:
+            robot_mode = newmode
+
+        if robot_mode == MODE_AUTONOMOUS:
+            cffi_stub.FRCNetworkCommunicationsLibrary.FRCNetworkCommunicationObserveUserProgramAutonomous()
+        elif robot_mode == MODE_TELEOP:
+            cffi_stub.FRCNetworkCommunicationsLibrary.FRCNetworkCommunicationObserveUserProgramTeleop()
+        elif robot_mode == MODE_TESTING:
+            cffi_stub.FRCNetworkCommunicationsLibrary.FRCNetworkCommunicationObserveUserProgramTest()
+        else:  # disabled
+            cffi_stub.FRCNetworkCommunicationsLibrary.FRCNetworkCommunicationObserveUserProgramDisabled()
 
         for stick in range(JOYSTICK_NUM):
             stick_axes[stick] = list(cffi_stub.FRCNetworkCommunicationsLibrary.HALGetJoystickAxes(stick))
@@ -57,6 +95,10 @@ def ds_dispatch():
     with ds_ready_cond:
         ds_ready = True
     ds_dispatch_event()
+
+
+def get_robot_mode() -> int:
+    return robot_mode
 
 
 def get_joystick_axis(joy_i: int, axis: int) -> float:

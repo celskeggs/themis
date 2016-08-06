@@ -83,8 +83,8 @@ def get_prop(key):
 
 
 class Generator(abc.ABC):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         add_code_generator(self._generate_code)
 
     @abc.abstractmethod
@@ -93,9 +93,9 @@ class Generator(abc.ABC):
 
 
 class RefGenerator(Generator):
-    def __init__(self, pattern="ref%d"):
-        super().__init__()
+    def __init__(self, *args, pattern="ref%d", **kwargs):
         self._ref_id = pattern % (next_uid(),)
+        super().__init__(*args, **kwargs)
 
     def _generate_code(self):
         return self.generate_ref_code(self._ref_id)

@@ -8,6 +8,15 @@ import themis.exec
 import themis.joystick
 import themis.pwm
 import themis.timers
+import themis.auto
+import enum
+
+
+class Mode(enum.Enum):
+    DISABLED = themis.exec.frc.MODE_DISABLED
+    AUTONOMOUS = themis.exec.frc.MODE_AUTONOMOUS
+    TELEOP = themis.exec.frc.MODE_TELEOP
+    TESTING = themis.exec.frc.MODE_TESTING
 
 
 class RoboRIO:
@@ -16,6 +25,16 @@ class RoboRIO:
         self.can = CAN()
         self.pwm = PWM()
         self.gpio = GPIO()
+
+    def get_mode(self) -> themis.channel.DiscreteInput:
+        return self.driver_station.get_mode()
+
+    def is_mode(self, mode: Mode) -> themis.channel.BooleanInput:
+        return self.get_mode().is_value(mode)
+
+    def run_during_auto(self, autonomous: themis.auto.AutonomousType):
+        should_run = self.is_mode(Mode.AUTONOMOUS)
+        themis.auto.run_autonomous_while(should_run, autonomous)
 
 
 # TODO: use appropriate exceptions for argument ranges instead of assertions
@@ -121,6 +140,13 @@ class DriverStation:
         themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.ds_begin), themis.codeinit.Phase.PHASE_BEGIN,
                                       args=(self._update,))
         self.joysticks = [Joystick(i, self._update) for i in range(themis.exec.frc.JOYSTICK_NUM)]
+        self._get_mode = None
+
+    def get_mode(self) -> themis.channel.DiscreteInput:
+        if self._get_mode is None:
+            self._get_mode = themis.codehelpers.poll_discrete(self._update, themis.exec.frc.get_robot_mode, (),
+                                                              Mode.DISABLED, Mode)
+        return self._get_mode
 
     def joystick(self, i):
         return self.joysticks[i - 1]
