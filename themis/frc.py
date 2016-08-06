@@ -1,5 +1,6 @@
 import typing
 
+import themis.auto
 import themis.channel
 import themis.codegen
 import themis.codehelpers
@@ -8,15 +9,8 @@ import themis.exec
 import themis.joystick
 import themis.pwm
 import themis.timers
-import themis.auto
-import enum
 
-
-class Mode(enum.Enum):
-    DISABLED = themis.exec.frc.MODE_DISABLED
-    AUTONOMOUS = themis.exec.frc.MODE_AUTONOMOUS
-    TELEOP = themis.exec.frc.MODE_TELEOP
-    TESTING = themis.exec.frc.MODE_TESTING
+Mode = themis.channel.Discrete("DISABLED AUTONOMOUS TELEOP TESTING")
 
 
 class RoboRIO:
@@ -65,10 +59,10 @@ class GPIO:
             interrupt_id = self._alloc_interrupt()
             themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_interrupt),
                                           themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin, interrupt_id))
-            bool = themis.channel.BooleanCell()
+            bool_out, bool_in = themis.channel.boolean_cell(False)  # TODO: default value
             themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_start_interrupt),
-                                          themis.codeinit.Phase.PHASE_BEGIN, args=(gpio_pin, interrupt_id, bool))
-            return bool
+                                          themis.codeinit.Phase.PHASE_BEGIN, args=(gpio_pin, interrupt_id, bool_out))
+            return bool_in
         else:
             themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_poll),
                                           themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin,))
@@ -136,9 +130,9 @@ class PCM:
 
 class DriverStation:
     def __init__(self):
-        self._update = themis.channel.EventCell()
+        update_out, self._update = themis.channel.event_cell()
         themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.ds_begin), themis.codeinit.Phase.PHASE_BEGIN,
-                                      args=(self._update,))
+                                      args=(update_out,))
         self.joysticks = [Joystick(i, self._update) for i in range(themis.exec.frc.JOYSTICK_NUM)]
         self._get_mode = None
 
@@ -160,10 +154,12 @@ class Joystick(themis.joystick.Joystick):
         self._buttons = [self._make_button(i) for i in range(themis.exec.frc.MAX_BUTTON_NUM)]
 
     def _make_axis(self, i):
-        return themis.codehelpers.poll_float(self._update, themis.exec.frc.get_joystick_axis, (self._index, i))
+        return themis.codehelpers.poll_float(self._update, themis.exec.frc.get_joystick_axis,
+                                             (self._index, i), 0)
 
     def _make_button(self, i):
-        return themis.codehelpers.poll_boolean(self._update, themis.exec.frc.get_joystick_button, (self._index, i))
+        return themis.codehelpers.poll_boolean(self._update, themis.exec.frc.get_joystick_button,
+                                               (self._index, i), False)
 
     def axis(self, axis_num):
         return self._axes[axis_num - 1]

@@ -24,17 +24,11 @@ stick_button_counts = [0] * JOYSTICK_NUM
 cffi_stub = None
 ds_ready_cond = threading.Lock()
 ds_ready = True
-ds_dispatch_event = None
 robot_mode = MODE_DISABLED
 
 
-def ds_begin():
-    threading.Thread(target=ds_mainloop).start()
-
-
-def ds_set_event(event):
-    global ds_dispatch_event
-    ds_dispatch_event = event
+def ds_begin(target):
+    threading.Thread(target=ds_mainloop, args=(target,)).start()
 
 
 def ds_calc_mode(word):
@@ -54,7 +48,7 @@ def ds_calc_mode(word):
         return MODE_TELEOP
 
 
-def ds_mainloop():
+def ds_mainloop(target):
     global ds_ready, robot_mode
     data_mutex = cffi_stub.HALUtil.initializeMutexNormal()
     data_semaphor = cffi_stub.HALUtil.initializeMultiWait()
@@ -86,7 +80,7 @@ def ds_mainloop():
 
         with ds_ready_cond:
             if ds_ready:
-                themis.exec.runloop.queue_event(ds_dispatch)
+                themis.exec.runloop.queue_event(target)
                 ds_ready = False
 
 

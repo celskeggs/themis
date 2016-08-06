@@ -30,23 +30,23 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
     shifter = roboRIO.can.pcm.solenoid(1)
     ball_sensor = roboRIO.gpio.input(1, interrupt=True)
 
-    shifting_state = themis.BooleanCell(value=True)
-    shifting_state.send(shifter)
+    shifting_state = themis.boolean_cell(True)
+    shifting_state.input.send(shifter)
     shifting_state.toggle.when(ctrl_button.press)
 
     themis.drive.tank_drive(ctrl_left_yaxis, ctrl_right_yaxis,
                             left_motors, right_motors)
 
-    contains_ball = themis.BooleanCell(value=False)
-    contains_ball.set_true.when(ball_sensor.release)
-    contains_ball.set_false.when(aux_trigger.press)
-    contains_ball.set_false.when(aux_button.press)
+    contains_ball = themis.boolean_cell(False)
+    contains_ball.output.set_true.when(ball_sensor.release)
+    contains_ball.output.set_false.when(aux_trigger.press)
+    contains_ball.output.set_false.when(aux_button.press)
 
-    aiming = themis.BooleanCell(value=False)
+    aiming = themis.boolean_cell(False)
     aiming.toggle.when(aux_button_6.press)
-    ((aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1)).with_ramping(50).send(
+    ((aux_x_axis * aux_y_axis * aiming.input.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1)).with_ramping(50).send(
         shooter_right)
-    ((- aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1)).with_ramping(50).send(
+    ((- aux_x_axis * aux_y_axis * aiming.input.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1)).with_ramping(50).send(
         shooter_left)
 
     def turn(act, degrees):

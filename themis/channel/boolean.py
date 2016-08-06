@@ -79,30 +79,30 @@ class BooleanInput:
 
     def choose_float(self, when_false: "themis.channel.float.FloatInput", when_true: "themis.channel.float.FloatInput") \
             -> "themis.channel.float.FloatInput":
-        cell_out, cell_in = themis.channel.float.float_cell()
+        cell_out, cell_in = themis.channel.float.float_cell(0)  # TODO: default values
 
         # TODO: DEFAULT VALUES
         condition = themis.codegen.add_variable(False)
-        when_true = themis.codegen.add_variable(0)
-        when_false = themis.codegen.add_variable(0)
+        var_true = themis.codegen.add_variable(0)
+        var_false = themis.codegen.add_variable(0)
 
         @boolean_build
         def update_cond(ref: str):
-            yield "globals %s, %s, %s" % (condition, when_true, when_false)
+            yield "globals %s, %s, %s" % (condition, var_true, var_false)
             yield "%s = value" % condition
-            yield "%s(%s if %s else %s)" % (cell_out, when_true, condition, when_false)
+            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
 
         @themis.channel.float.float_build
         def update_true(ref: str):
-            yield "globals %s, %s, %s" % (condition, when_true, when_false)
-            yield "%s = value" % when_true
-            yield "%s(%s if %s else %s)" % (cell_out, when_true, condition, when_false)
+            yield "globals %s, %s, %s" % (condition, var_true, var_false)
+            yield "%s = value" % var_true
+            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
 
         @themis.channel.float.float_build
         def update_false(ref: str):
-            yield "globals %s, %s, %s" % (condition, when_true, when_false)
-            yield "%s = value" % when_false
-            yield "%s(%s if %s else %s)" % (cell_out, when_true, condition, when_false)
+            yield "globals %s, %s, %s" % (condition, var_true, var_false)
+            yield "%s = value" % var_false
+            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
 
         self.send(update_cond)
         when_false.send(update_false)
@@ -126,14 +126,43 @@ class BooleanInput:
 
 def boolean_build(body_gen) -> BooleanOutput:
     def gen(ref: str):
-        yield "def %s(value) -> None:" % ref
+        yield "def %s(value: bool) -> None:" % ref
         for line in body_gen(ref):
             yield "\t%s" % (line,)
 
     return BooleanOutput(themis.codegen.add_code_gen_ref(gen))
 
 
-def boolean_cell(default_value) -> typing.Tuple[BooleanOutput, BooleanInput]:
+class BooleanIO:
+    def __init__(self, output: BooleanOutput, input: BooleanInput):
+        assert isinstance(output, BooleanOutput)
+        assert isinstance(input, BooleanInput)
+        self.output = output
+        self.input = input
+
+    def __iter__(self):
+        return iter((self.output, self.input))
+
+    @property
+    @themis.util.memoize_field
+    def toggle(self) -> "themis.channel.event.EventOutput":
+        last_value = themis.codegen.add_variable(False)  # TODO: default value
+
+        @boolean_build
+        def update_saved_value(ref: str):
+            yield "globals %s" % last_value
+            yield "%s = value" % last_value
+
+        @themis.channel.event.event_build
+        def toggle(ref: str):
+            yield "globals %s" % last_value
+            yield "%s(not %s)" % (self.output.get_boolean_ref(), last_value)
+
+        self.input.send(update_saved_value)
+        return toggle
+
+
+def boolean_cell(default_value) -> BooleanIO:
     # TODO: use default_value
     targets = []
 
@@ -145,8 +174,8 @@ def boolean_cell(default_value) -> typing.Tuple[BooleanOutput, BooleanInput]:
         else:
             yield "pass"
 
-    return dispatch, BooleanInput(targets)
+    return BooleanIO(dispatch, BooleanInput(targets))
 
 
 def always_boolean(value):
-    return boolean_cell(value)[1]
+    return boolean_cell(value).input

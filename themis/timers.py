@@ -17,6 +17,6 @@ def ticker(millis: int, isolated=False) -> themis.channel.event.EventInput:
         if millis not in cached_tickers:
             cached_tickers[millis] = ticker(millis, isolated=True)
         return cached_tickers[millis]
-    event = themis.channel.event.EventCell()
-    tick(millis, event)
-    return event
+    event_out, event_in = themis.channel.event.event_cell()
+    tick(millis, event_out)
+    return event_in

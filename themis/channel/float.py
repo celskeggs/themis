@@ -17,14 +17,15 @@ class FloatOutput:
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
-    def filter(self, filter_func, *args, pre_args=()) -> "FloatOutput":
+    def filter(self, filter_func, pre_args=(), post_args=()) -> "FloatOutput":
+        assert isinstance(pre_args, tuple) and isinstance(post_args, tuple)
         filter_ref = themis.codegen.ref(filter_func)
         pre_args = themis.codegen.ref(pre_args)
-        args = themis.codegen.ref(args)
+        post_args = themis.codegen.ref(post_args)
 
         @float_build
         def update(ref: str):
-            yield "%s(%s(*%s, value, %s))" % (self.get_float_ref(), filter_ref, pre_args, args)
+            yield "%s(%s(*%s, value, %s))" % (self.get_float_ref(), filter_ref, pre_args, post_args)
 
         return update
 
@@ -96,33 +97,39 @@ class FloatInput:
         # TODO: default value?
         self._targets.append(output.get_float_ref())
 
-    def filter(self, filter_ref, *args, pre_args=()) -> "FloatInput":
-        cell_out, cell_in = float_cell()  # TODO: default value
-        self.send(cell_out.filter(filter_ref=filter_ref, *args, pre_args=pre_args))
+    def filter(self, filter_func, pre_args=(), post_args=()) -> "FloatInput":
+        cell_out, cell_in = float_cell(0)  # TODO: default value
+        self.send(cell_out.filter(filter_func=filter_func, pre_args=pre_args, post_args=post_args))
         return cell_in
 
-    def operation(self, filter_ref, other: "FloatInput", *args, pre_args=()) -> "FloatInput":
-        import themis.codehelpers  # here to avoid issues with circular references
-        cell = FloatCell()
-        ref = "ref%d" % themis.codegen.next_uid()
-        for ab, inp in zip("ab", (self, other)):
-            themis.codegen.add_code("v%s_%s = %s" % (ab, ref, inp.default_value()))
-            themis.codegen.add_code(
-                "def m%s_%s(fv):\n\tglobals va_%s, vb_%s\n\tv%s_%s = fv\n\t%s(%s(*%s, va_%s, vb_%s, *%s))"
-                % (ab, ref, ref, ref, ab, ref, cell.get_reference(), themis.codegen.ref(filter_ref),
-                   themis.codegen.ref(pre_args), ref, ref, themis.codegen.ref(args)))
-            inp.send(themis.codehelpers.FloatWrapper("m%s_%s" % (ab, ref)))
-        cell.send_default_value(filter_ref(*pre_args, self.default_value(), other.default_value(), *args))
-        return cell
+    def operation(self, filter_func, other: "FloatInput", *args, pre_args=()) -> "FloatInput":
+        cell_out, cell_in = float_cell(0)  # TODO: default value
+
+        filter_ref = themis.codegen.ref(filter_func)
+        args = themis.codegen.ref(args)
+        pre_args = themis.codegen.ref(pre_args)
+
+        value_self = themis.codegen.add_variable(0)  # TODO: default value
+        value_other = themis.codegen.add_variable(0)
+        for value, input in zip((value_self, value_other), (self, other)):
+            @float_build
+            def update(ref: str):
+                yield "globals %s, %s" % (value_self, value_other)
+                yield "%s = value" % (value,)
+                yield "%s(%s(*%s, %s, %s, *%s))" % \
+                      (cell_out.get_float_ref(), filter_ref, pre_args, value_self, value_other, args)
+
+            input.send(update)
+        return cell_in
 
     def deadzone(self, zone: float) -> "FloatInput":
-        return self.filter(themis.exec.filters.deadzone, zone)
+        return self.filter(themis.exec.filters.deadzone, (), (zone,))
 
     # note: different ramping scale than the CCRE
     def with_ramping(self, change_per_second: float, update_rate_ms=None) -> "FloatInput":
-        cell_out, cell_in = float_cell()
+        cell_out, cell_in = float_cell(0)  # TODO: default value
         self.send(cell_out.add_ramping(change_per_second, update_rate_ms=update_rate_ms,
-                                       default_target=self.default_value()))
+                                       default_target=0))
         return cell_in
 
     def _arith_op(self, op, other, reverse):
@@ -169,7 +176,7 @@ class FloatInput:
 
 def float_build(body_gen) -> FloatOutput:
     def gen(ref: str):
-        yield "def %s(value) -> None:" % ref
+        yield "def %s(value: float) -> None:" % ref
         for line in body_gen(ref):
             yield "\t%s" % (line,)
 

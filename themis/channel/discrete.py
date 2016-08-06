@@ -1,96 +1,101 @@
 import abc
+import typing
 import themis.channel.event
 import themis.codegen
 import enum
+import string
 
-__all__ = ["DiscreteOutput", "DiscreteInput", "DiscreteCell", "always_discrete"]
+__all__ = ["DiscreteOutput", "DiscreteInput", "discrete_cell", "always_discrete", "Discrete"]
+
+VALID_ENUM_CHARS = string.ascii_uppercase + "_"
 
 
-class DiscreteOutput(abc.ABC):
-    def __init__(self, enum_type: enum.Enum):
-        super().__init__(enum_type)
-        self.discrete_type = enum_type
+class Discrete:
+    def __init__(self, options: str):
+        self._opts = options.split(" ")
+        for option in self._opts:
+            assert all(c in VALID_ENUM_CHARS for c in option)
+            setattr(self, option, option)
+
+    def __iter__(self):
+        return iter(self._opts)
+
+    def numeric(self, option: str):
+        return self._opts.index(option)
+
+
+class DiscreteOutput:
+    def __init__(self, reference: str, discrete_type: Discrete):
+        assert isinstance(reference, str)
+        assert isinstance(discrete_type, Discrete)
+        self._ref = reference
+        self.discrete_type = discrete_type
         self._sets = {}
 
-    @abc.abstractmethod
-    def get_reference(self) -> str:
-        pass
+    def get_discrete_ref(self) -> str:
+        return self._ref
 
-    @abc.abstractmethod
-    def send_default_value(self, value: enum.Enum):
-        pass
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
 
-    def set_event(self, value: enum.Enum) -> "themis.channel.event.EventOutput":
+    def set_event(self, value: str) -> "themis.channel.event.EventOutput":
         assert value in self.discrete_type
         if value not in self._sets:
-            import themis.codehelpers
-            ref = "set_%s_%s" % (value.value, self.get_reference())
-            themis.codegen.add_code("def %s():\n\t%s(%s)" % (ref, self.get_reference(), value.value))
-            self._sets[value] = themis.codehelpers.EventWrapper(ref)
+            value_int = self.discrete_type.numeric(value)
+
+            @themis.channel.event.event_build
+            def update(ref: str):
+                yield "%s(%s)" % (self.get_discrete_ref(), value_int)
+
+            self._sets[value] = update
         return self._sets[value]
 
 
-class DiscreteInput(abc.ABC):
-    def __init__(self, enum_type: enum.Enum):
-        # TODO: verify enum types against each other in appropriate cases
-        super().__init__(enum_type)
-        self.discrete_type = enum_type
-        self._press, self._release = None, None
+class DiscreteInput:
+    def __init__(self, targets: list, discrete_type: Discrete):
+        assert isinstance(targets, list)
+        self._targets = targets
+        assert isinstance(discrete_type, Discrete)
+        self.discrete_type = discrete_type
 
     def send(self, output: DiscreteOutput) -> None:
-        output.send_default_value(self.default_value())
-        self._send(output)
+        assert self.discrete_type == output.discrete_type
+        self._targets.append(output.get_discrete_ref())
 
-    @abc.abstractmethod
-    def _send(self, output: DiscreteOutput) -> None:
-        pass
-
-    @abc.abstractmethod
-    def default_value(self) -> enum.Enum:
-        pass
+    def __bool__(self):
+        raise TypeError("Cannot convert IO channels to bool")
 
 
-class DiscreteCell(themis.codegen.RefGenerator, DiscreteInput, DiscreteOutput):
-    def __init__(self, value: enum.Enum, enum_type: enum.Enum):
-        super().__init__(enum_type)
-        assert value in enum_type
-        self._default_value = value
-        self._default_value_queried = False
-        self._targets = []
+def discrete_build(discrete_type: Discrete):
+    assert isinstance(discrete_type, Discrete)
 
-    def default_value(self):
-        self._default_value_queried = True
-        return self._default_value
+    def bound_build(body_gen) -> DiscreteOutput:
+        def gen(ref: str):
+            yield "def %s(value: int) -> None:" % ref
+            for line in body_gen(ref):
+                yield "\t%s" % (line,)
 
-    def _send(self, target: DiscreteOutput):
-        self._targets.append(target)
+        return DiscreteOutput(themis.codegen.add_code_gen_ref(gen), discrete_type)
 
-    def send_default_value(self, value: enum.Enum):
-        if value != self._default_value:
-            assert not self._default_value_queried, "Default value changed after usage!"
-
-    def generate_ref_code(self, ref):
-        yield "value_%s = %s" % (ref, self._default_value.value)
-        yield "def %s(bv: bool) -> None:" % ref
-        yield "\tglobals value_%s" % ref
-        yield "\tif bv == value_%s: return" % ref
-        yield "\tvalue_%s = bv" % ref
-        for target in self._targets:
-            yield "\t%s(bv)" % target.get_reference()
+    return bound_build
 
 
-def always_discrete(value, enum_type: enum.Enum):
-    return FixedDiscreteInput(value, enum_type)
+def discrete_cell(default_value: str, discrete_type: Discrete) -> typing.Tuple[DiscreteOutput, DiscreteInput]:
+    assert isinstance(discrete_type, Discrete)
+    assert default_value in discrete_type
+    # TODO: use default_value
+    targets = []
+
+    @discrete_build(discrete_type)
+    def dispatch(ref: str):
+        if targets:
+            for target in targets:
+                yield "%s(value)" % (target,)
+        else:
+            yield "pass"
+
+    return dispatch, DiscreteInput(targets, discrete_type)
 
 
-class FixedDiscreteInput(DiscreteInput):
-    def __init__(self, value: enum.Enum, enum_type: enum.Enum):
-        super().__init__(enum_type)
-        self._value = value
-
-    def default_value(self):
-        return self._value
-
-    def send(self, output: DiscreteOutput):
-        super().send(output)
-        # no changes, so we don't bother doing anything with it!
+def always_discrete(value: str, discrete_type: Discrete):
+    return discrete_cell(value, discrete_type)[1]

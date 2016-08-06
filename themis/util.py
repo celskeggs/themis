@@ -12,7 +12,7 @@ def memoize_field(gen: typing.Callable[[Self], T]) -> typing.Callable[[Self], T]
     def fetch(self):
         value = getattr(self, attr, None)
         if value is None:
-            value = gen()
+            value = gen(self)
             setattr(self, attr, value)
         return value
 

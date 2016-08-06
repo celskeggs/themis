@@ -3,86 +3,63 @@ import enum
 import themis.channel
 
 
-class EventWrapper(themis.channel.EventOutput):
-    def __init__(self, ref: str):
-        self._ref = ref
+def poll_float(event: themis.channel.EventInput, poll_func, args, default_value) -> themis.channel.FloatInput:
+    c_out, c_in = themis.channel.float_cell(default_value)
+    poll_ref = themis.codegen.ref(poll_func)
+    arg_ref = themis.codegen.ref(args)
 
-    def get_reference(self) -> str:
-        return self._ref
+    @themis.channel.event.event_build
+    def poll(ref: str):
+        yield "%s(%s(*%s))" % (c_out.get_float_ref(), poll_ref, arg_ref)
 
-
-class FloatWrapper(themis.channel.FloatOutput):
-    def __init__(self, ref: str):
-        self._ref = ref
-
-    def get_reference(self) -> str:
-        return self._ref
-
-    def send_default_value(self, value: float):
-        pass  # TODO: handle default value correctly
+    event.send(poll)
+    return c_in
 
 
-class BooleanWrapper(themis.channel.BooleanOutput):
-    def __init__(self, ref: str):
-        super().__init__()
-        self._ref = ref
+def poll_boolean(event: themis.channel.EventInput, poll_func, args, default_value) -> themis.channel.BooleanInput:
+    c_out, c_in = themis.channel.boolean_cell(default_value)
+    poll_ref = themis.codegen.ref(poll_func)
+    arg_ref = themis.codegen.ref(args)
 
-    def get_reference(self) -> str:
-        return self._ref
+    @themis.channel.event.event_build
+    def poll(ref: str):
+        yield "%s(%s(*%s))" % (c_out.get_boolean_ref(), poll_ref, arg_ref)
 
-    def send_default_value(self, value: float):
-        pass  # TODO: handle default value correctly
-
-
-class DiscreteWrapper(themis.channel.DiscreteOutput):
-    def __init__(self, ref: str, enum_type: enum.Enum):
-        super().__init__(enum_type)
-        self._ref = ref
-
-    def get_reference(self) -> str:
-        return self._ref
-
-    def send_default_value(self, value: float):
-        pass  # TODO: handle default value correctly
+    event.send(poll)
+    return c_in
 
 
-def poll_float(event: themis.channel.EventInput, poll_func, args) -> themis.channel.FloatInput:
-    f = themis.channel.FloatCell()
-    newref = "pollf%d" % themis.codegen.next_uid()
-    themis.codegen.add_code("def %s():\n\t%s(%s(*%s))" %
-                            (newref, f.get_reference(), themis.codegen.ref(poll_func), themis.codegen.ref(args)))
-    event.send(EventWrapper(newref))
-    return f
+def poll_discrete(event: themis.channel.EventInput, poll_func, args, default_value: str,
+                  discrete_type: themis.channel.Discrete) -> themis.channel.DiscreteInput:
+    c_out, c_in = themis.channel.discrete_cell(default_value, discrete_type)
+    poll_ref = themis.codegen.ref(poll_func)
+    arg_ref = themis.codegen.ref(args)
 
+    @themis.channel.event.event_build
+    def poll(ref: str):
+        yield "%s(%s(*%s))" % (c_out.get_discrete_ref(), poll_ref, arg_ref)
 
-def poll_boolean(event: themis.channel.EventInput, poll_func, args) -> themis.channel.BooleanInput:
-    f = themis.channel.BooleanCell()
-    newref = "pollb%d" % themis.codegen.next_uid()
-    themis.codegen.add_code("def %s():\n\t%s(%s(*%s))" %
-                            (newref, f.get_reference(), themis.codegen.ref(poll_func), themis.codegen.ref(args)))
-    event.send(EventWrapper(newref))
-    return f
-
-
-def poll_discrete(event: themis.channel.EventInput, poll_func, args, default_value: enum.Enum,
-                  enum_type: enum.Enum) -> themis.channel.DiscreteInput:
-    f = themis.channel.DiscreteCell(default_value, enum_type)
-    newref = "polld%d" % themis.codegen.next_uid()
-    themis.codegen.add_code("def %s():\n\t%s(%s(*%s))" %
-                            (newref, f.get_reference(), themis.codegen.ref(poll_func), themis.codegen.ref(args)))
-    event.send(EventWrapper(newref))
-    return f
+    event.send(poll)
+    return c_in
 
 
 def push_float(update_func, extra_args) -> themis.channel.FloatOutput:
-    newref = "pushf%d" % themis.codegen.next_uid()
-    themis.codegen.add_code("def %s(fv):\n\t%s(fv, *%s)" %
-                            (newref, themis.codegen.ref(update_func), themis.codegen.ref(extra_args)))
-    return FloatWrapper(newref)
+    update_func = themis.codegen.ref(update_func)
+    extra_args = themis.codegen.ref(extra_args)
+
+    @themis.channel.float.float_build
+    def push(ref: str):
+        yield "%s(value, *%s)" % (update_func, extra_args)
+
+    return push
 
 
 def push_boolean(update_func, extra_args) -> themis.channel.BooleanOutput:
-    newref = "pushb%d" % themis.codegen.next_uid()
-    themis.codegen.add_code("def %s(bv):\n\t%s(bv, *%s)" %
-                            (newref, themis.codegen.ref(update_func), themis.codegen.ref(extra_args)))
-    return BooleanWrapper(newref)
+    update_func = themis.codegen.ref(update_func)
+    extra_args = themis.codegen.ref(extra_args)
+
+    @themis.channel.boolean.boolean_build
+    def push(ref: str):
+        yield "%s(value, *%s)" % (update_func, extra_args)
+
+    return push

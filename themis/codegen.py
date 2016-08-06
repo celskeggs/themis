@@ -137,6 +137,7 @@ def ref(obj):
             return "(%s,)" % ref(obj[0])
         else:
             return "(%s)" % ", ".join(ref(element) for element in obj)
-    elif hasattr(obj, "get_reference"):
-        return obj.get_reference()
+    for ref_name in ("get_event_ref", "get_boolean_ref", "get_float_ref", "get_discrete_ref"):
+        if hasattr(obj, ref_name):
+            return getattr(obj, ref_name)()
     raise TypeError("Cannot construct reference to: %s of type %s" % (obj, type(obj)))
