@@ -19,6 +19,27 @@ class FloatOutput(abc.ABC):
     def filter(self, filter_ref, *args, pre_args=()) -> "FloatOutput":
         return FilterFloatOutput(self, filter_ref, pre_args, args)
 
+    # note: different ramping scale than the CCRE
+    # TODO: handle default targets better
+    def add_ramping(self, change_per_second: float, update_rate_ms=None,
+                    default_target=0) -> "FloatOutput":
+        import themis.timers
+        import themis.codehelpers
+        if update_rate_ms is None:
+            update_rate_ms = 10
+        ticker = themis.timers.ticker(update_rate_ms)
+        max_change_per_update = (change_per_second * (update_rate_ms / 1000.0))
+        ref = "ramp%d" % themis.codegen.next_uid()
+        themis.codegen.add_code("target_%s = %s" % (ref, default_target))
+        themis.codegen.add_code("out_%s = %s" % (ref, default_target))
+        themis.codegen.add_code("def f_%s(fv):\n\ttarget_%s = fv" % (ref, ref))
+        themis.codegen.add_code("def e_%s(fv):\n\tout_%s = %s(out_%s, target_%s, %s)\n\t%s(out_%s)" % (
+            ref, ref, themis.codegen.ref(themis.exec.filters.ramping_update), ref, ref, max_change_per_update,
+            self.get_reference(), ref))
+        self.send_default_value(default_target)
+        ticker.send(themis.codehelpers.EventWrapper("e_%s" % ref))
+        return themis.codehelpers.FloatWrapper("f_%s" % ref)
+
     def __add__(self, other):
         if isinstance(other, FloatOutput):
             return CombinedFloatOutput(self, other)
@@ -47,6 +68,7 @@ class FloatOutput(abc.ABC):
         return self.filter(themis.exec.filters.negate)
 
 
+# TODO: make FloatCells cast to FloatInputs not be accessible as FloatOutputs.
 class FloatInput(abc.ABC):
     @abc.abstractmethod
     def send(self, output: FloatOutput) -> None:
@@ -75,6 +97,13 @@ class FloatInput(abc.ABC):
 
     def deadzone(self, zone: float) -> "FloatInput":
         return self.filter(themis.exec.filters.deadzone, zone)
+
+    # note: different ramping scale than the CCRE
+    def with_ramping(self, change_per_second: float, update_rate_ms=None) -> "FloatInput":
+        cell = FloatCell()
+        self.send(cell.add_ramping(change_per_second, update_rate_ms=update_rate_ms,
+                                   default_target=self.default_value()))
+        return cell
 
     def _arith_op(self, op, other, reverse):
         if isinstance(other, (int, float)):

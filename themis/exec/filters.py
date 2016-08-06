@@ -44,3 +44,10 @@ def pwm_map(value: float, rev_max: float, rev_min: float, center: float, fwd_min
         return value
     else:
         return center
+
+
+def ramping_update(previous, target, max_change_per_update):
+    if previous < target:
+        return min(target, previous + max_change_per_update)
+    else:
+        return max(target, previous - max_change_per_update)
