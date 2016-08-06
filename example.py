@@ -44,9 +44,9 @@ def setup_robot(roboRIO: themis.frc.RoboRIO):
 
     aiming = themis.BooleanCell(value=False)
     aiming.toggle.when(aux_button_6.press)
-    (aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).control(
+    (aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).send(
         shooter_right)
-    (- aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).control(
+    (- aux_x_axis * aux_y_axis * aiming.choose(0, 1) - aux_y_axis) * aux_trigger.choose(0, 1).with_ramping(0.5).send(
         shooter_left)
 
     def turn(act, degrees):

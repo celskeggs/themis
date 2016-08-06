@@ -42,6 +42,7 @@ class BooleanInput(abc.ABC):
         super().__init__()
         self._press, self._release = None, None
 
+    # TODO: more precise checking when sending to make sure that Floats and Booleans can't be intermixed.
     def send(self, output: BooleanOutput) -> None:
         output.send_default_value(self.default_value())
         self._send(output)
@@ -58,8 +59,8 @@ class BooleanInput(abc.ABC):
         cell = themis.channel.event.EventCell()
         ref = "change%d" % themis.codegen.next_uid()
         themis.codegen.add_code(
-            "last_%s = %s\ndef %s(bv):\n\tif bv == last_%s: return\n\tlast_%s = bv\n\tif bv != %s: return\n\t%s()" %
-            (ref, self.default_value(), ref, ref, ref, press, cell))
+            "last_%s = %s\ndef %s(bv):\n\tglobals last_%s\n\tif bv == last_%s: return\n\tlast_%s = bv\n\tif bv != %s: return\n\t%s()" %
+            (ref, self.default_value(), ref, ref, ref, ref, press, cell))
         return cell
 
     @property
@@ -82,6 +83,59 @@ class BooleanInput(abc.ABC):
     @property
     def become_false(self):
         return self.release
+
+    # TODO: failing __bool__
+
+    def choose_float(self, when_false: "themis.channel.float.FloatInput", when_true: "themis.channel.float.FloatInput") \
+            -> "themis.channel.float.FloatInput":
+        import themis.codehelpers  # here to avoid issues with circular references
+        out = themis.channel.float.FloatCell()
+        out.send_default_value(when_true.default_value() if self.default_value() else when_false.default_value())
+        ref = "ref%d" % themis.codegen.next_uid()
+        for ctf, inp in zip("ctf", (self, when_true, when_false)):
+            themis.codegen.add_code("v%s_%s = %s" % (ctf, ref, inp.default_value()))
+            themis.codegen.add_code(
+                "def m%s_%s(v):\n\tglobals vc_%s, vt_%s, vf_%s\n\tv%s_%s = fv\n\t%s(vt_%s if vc_%s else vf_%s)"
+                % (ctf, ref, ref, ref, ref, ctf, ref, out.get_reference(), ref, ref, ref))
+            if ctf == "c":
+                inp.send(themis.codehelpers.BooleanWrapper("mc_%s" % (ref,)))
+            else:
+                inp.send(themis.codehelpers.FloatWrapper("m%s_%s" % (ctf, ref)))
+        return out
+
+    # TODO: don't duplicate code between choose_float and choose_boolean
+
+    def choose_boolean(self, when_false: "BooleanInput", when_true: "BooleanInput") -> "BooleanInput":
+        import themis.codehelpers  # here to avoid issues with circular references
+        out = BooleanCell()
+        out.send_default_value(when_true.default_value() if self.default_value() else when_false.default_value())
+        ref = "ref%d" % themis.codegen.next_uid()
+        for ctf, inp in zip("ctf", (self, when_true, when_false)):
+            themis.codegen.add_code("v%s_%s = %s" % (ctf, ref, inp.default_value()))
+            themis.codegen.add_code(
+                "def m%s_%s(v):\n\tglobals vc_%s, vt_%s, vf_%s\n\tv%s_%s = fv\n\t%s(vt_%s if vc_%s else vf_%s)"
+                % (ctf, ref, ref, ref, ref, ctf, ref, out.get_reference(), ref, ref, ref))
+            inp.send(themis.codehelpers.BooleanWrapper("m%s_%s" % (ctf, ref)))
+        return out
+
+    def choose(self, when_false, when_true):
+        if isinstance(when_false, (int, float)):
+            when_false = themis.channel.float.always_float(when_false)
+        if isinstance(when_true, (int, float)):
+            when_true = themis.channel.float.always_float(when_true)
+        if isinstance(when_false, themis.channel.float.FloatInput):
+            if not isinstance(when_true, themis.channel.float.FloatInput):
+                raise TypeError("Parameters have different types: %s versus %s" % (when_false, when_true))
+            assert not isinstance(when_false, BooleanInput) and not isinstance(when_true, BooleanInput)
+            return self.choose_float(when_false, when_true)
+        elif isinstance(when_false, BooleanInput):
+            if not isinstance(when_true, BooleanInput):
+                raise TypeError("Parameters have different types: %s versus %s" % (when_false, when_true))
+            assert not isinstance(when_false, themis.channel.float.FloatInput)
+            assert not isinstance(when_true, themis.channel.float.FloatInput)
+            return self.choose_boolean(when_false, when_true)
+        else:
+            raise TypeError("when_false is of an invalid type: %s" % type(when_false))
 
 
 # TODO: deduplicate identical sets here and in FloatCell?

@@ -59,6 +59,20 @@ class FloatInput(abc.ABC):
     def filter(self, filter_ref, *args, pre_args=()) -> "FloatInput":
         return FilterFloatInput(self, filter_ref, pre_args, args)
 
+    def operation(self, filter_ref, other: "FloatInput", *args, pre_args=()) -> "FloatInput":
+        import themis.codehelpers  # here to avoid issues with circular references
+        cell = FloatCell()
+        ref = "ref%d" % themis.codegen.next_uid()
+        for ab, inp in zip("ab", (self, other)):
+            themis.codegen.add_code("v%s_%s = %s" % (ab, ref, inp.default_value()))
+            themis.codegen.add_code(
+                "def m%s_%s(fv):\n\tglobals va_%s, vb_%s\n\tv%s_%s = fv\n\t%s(%s(*%s, va_%s, vb_%s, *%s))"
+                % (ab, ref, ref, ref, ab, ref, cell.get_reference(), themis.codegen.ref(filter_ref),
+                   themis.codegen.ref(pre_args), ref, ref, themis.codegen.ref(args)))
+            inp.send(themis.codehelpers.FloatWrapper("m%s_%s" % (ab, ref)))
+        cell.send_default_value(filter_ref(*pre_args, self.default_value(), other.default_value(), *args))
+        return cell
+
     def deadzone(self, zone: float) -> "FloatInput":
         return self.filter(themis.exec.filters.deadzone, zone)
 
@@ -138,7 +152,7 @@ class FilterFloatInput(FloatInput):
         self._pre_args, self._post_args = pre_args, post_args
 
     def default_value(self):
-        return self._filter(self._base.default_value(), *self._args)
+        return self._filter(*self._pre_args, self._base.default_value(), *self._post_args)
 
     def send(self, output: FloatOutput):
         # no super call because the invoked send does it for us.
