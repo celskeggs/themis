@@ -146,6 +146,40 @@ class BooleanInput:
     def inverted(self):
         return self.filter(themis.exec.filters.invert)
 
+    def __and__(self, other):
+        if isinstance(other, bool):
+            if other:
+                return self
+            else:
+                return always_boolean(False)
+        elif isinstance(other, BooleanInput):
+            cell_out, cell_in = boolean_cell(False)  # TODO: default value
+
+            value_self = themis.codegen.add_variable(False)  # TODO: default value
+            value_other = themis.codegen.add_variable(False)
+
+            for value, input in zip((value_self, value_other), (self, other)):
+                @boolean_build
+                def update(ref: str):
+                    yield "globals %s, %s" % (value_self, value_other)
+                    yield "%s = value" % (value,)
+                    yield "%s(%s and %s)" % (cell_out.get_boolean_ref(), value_self, value_other)
+
+                input.send(update)
+            return cell_in
+        else:
+            return NotImplemented
+
+    def __rand__(self, other):
+        if isinstance(other, bool):
+            if other:
+                return self
+            else:
+                return always_boolean(False)
+        else:
+            assert not isinstance(other, BooleanInput), "should have dispatched to __and__"
+            return NotImplemented
+
 
 def boolean_build(body_gen) -> BooleanOutput:
     def gen(ref: str):
