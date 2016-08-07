@@ -27,7 +27,7 @@ class BooleanOutput:
 
         @boolean_build
         def update(ref: str):
-            yield "%s(%s(*%s, value, %s))" % (self.get_boolean_ref(), filter_ref, pre_args, post_args)
+            yield "%s(%s(*%s, value, *%s))" % (self.get_boolean_ref(), filter_ref, pre_args, post_args)
 
         return update
 
@@ -76,7 +76,7 @@ class BooleanInput:
 
         @boolean_build
         def check(ref: str):
-            yield "globals %s" % last_value
+            yield "global %s" % last_value
             yield "if value == %s: return" % last_value
             yield "%s = value" % last_value
             yield "if value:"
@@ -106,21 +106,21 @@ class BooleanInput:
 
         @boolean_build
         def update_cond(ref: str):
-            yield "globals %s, %s, %s" % (condition, var_true, var_false)
+            yield "global %s, %s, %s" % (condition, var_true, var_false)
             yield "%s = value" % condition
-            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
+            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
 
         @themis.channel.float.float_build
         def update_true(ref: str):
-            yield "globals %s, %s, %s" % (condition, var_true, var_false)
+            yield "global %s, %s, %s" % (condition, var_true, var_false)
             yield "%s = value" % var_true
-            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
+            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
 
         @themis.channel.float.float_build
         def update_false(ref: str):
-            yield "globals %s, %s, %s" % (condition, var_true, var_false)
+            yield "global %s, %s, %s" % (condition, var_true, var_false)
             yield "%s = value" % var_false
-            yield "%s(%s if %s else %s)" % (cell_out, var_true, condition, var_false)
+            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
 
         self.send(update_cond)
         when_false.send(update_false)
@@ -161,7 +161,7 @@ class BooleanInput:
             for value, input in zip((value_self, value_other), (self, other)):
                 @boolean_build
                 def update(ref: str):
-                    yield "globals %s, %s" % (value_self, value_other)
+                    yield "global %s, %s" % (value_self, value_other)
                     yield "%s = value" % (value,)
                     yield "%s(%s and %s)" % (cell_out.get_boolean_ref(), value_self, value_other)
 
@@ -207,12 +207,12 @@ class BooleanIO:
 
         @boolean_build
         def update_saved_value(ref: str):
-            yield "globals %s" % last_value
+            yield "global %s" % last_value
             yield "%s = value" % last_value
 
         @themis.channel.event.event_build
         def toggle(ref: str):
-            yield "globals %s" % last_value
+            yield "global %s" % last_value
             yield "%s(not %s)" % (self.output.get_boolean_ref(), last_value)
 
         self.input.send(update_saved_value)

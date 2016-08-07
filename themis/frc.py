@@ -150,22 +150,28 @@ class Joystick(themis.joystick.Joystick):
     def __init__(self, i: int, event_update_joysticks):
         self._index = i
         self._update = event_update_joysticks
-        self._axes = [self._make_axis(i) for i in range(themis.exec.frc.AXIS_NUM)]
-        self._buttons = [self._make_button(i) for i in range(themis.exec.frc.MAX_BUTTON_NUM)]
+        self._axes = [None] * themis.exec.frc.AXIS_NUM
+        self._buttons = [None] * themis.exec.frc.MAX_BUTTON_NUM
 
-    def _make_axis(self, i):
+    def _make_axis(self, i) -> themis.channel.FloatInput:
         return themis.codehelpers.poll_float(self._update, themis.exec.frc.get_joystick_axis,
                                              (self._index, i), 0)
 
-    def _make_button(self, i):
+    def _make_button(self, i) -> themis.channel.BooleanInput:
         return themis.codehelpers.poll_boolean(self._update, themis.exec.frc.get_joystick_button,
                                                (self._index, i), False)
 
-    def axis(self, axis_num):
-        return self._axes[axis_num - 1]
+    def axis(self, axis_num) -> themis.channel.FloatInput:
+        axis_num -= 1
+        if self._axes[axis_num] is None:
+            self._axes[axis_num] = self._make_axis(axis_num)
+        return self._axes[axis_num]
 
-    def button(self, button_num):
-        return self._buttons[button_num - 1]
+    def button(self, button_num) -> themis.channel.BooleanInput:
+        button_num -= 1
+        if self._buttons[button_num] is None:
+            self._buttons[button_num] = self._make_button(button_num)
+        return self._buttons[button_num]
 
 
 def deploy_roboRIO(team_number: int, code):
@@ -179,4 +185,4 @@ def robot(team_number: int, robot_constructor: typing.Callable[[RoboRIO], None])
     with themis.codegen.GenerationContext().enter():
         roboRIO = RoboRIO()
         robot_constructor(roboRIO)
-        deploy_roboRIO(team_number, roboRIO.generate_code())
+        deploy_roboRIO(team_number, themis.codegen.generate_code())

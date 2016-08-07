@@ -30,7 +30,7 @@ class GenerationContext:
         out.extend(self._output)
         for gen in self._output_generators:
             out.extend(gen())
-        return out
+        return "\n".join(out)
 
     def get_prop_init(self, key, default_producer):
         if key not in self._properties:
@@ -95,30 +95,8 @@ def get_prop(key):
     return GenerationContext.get_context().get_prop(key)
 
 
-class Generator(abc.ABC):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        add_code_generator(self._generate_code)
-
-    @abc.abstractmethod
-    def _generate_code(self):
-        pass
-
-
-class RefGenerator(Generator):
-    def __init__(self, *args, pattern="ref%d", **kwargs):
-        self._ref_id = pattern % (next_uid(),)
-        super().__init__(*args, **kwargs)
-
-    def _generate_code(self):
-        return self.generate_ref_code(self._ref_id)
-
-    @abc.abstractmethod
-    def generate_ref_code(self, ref):
-        pass
-
-    def get_reference(self):
-        return self._ref_id
+def generate_code():
+    return GenerationContext.get_context().generate_code()
 
 
 def ref(obj):

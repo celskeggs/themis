@@ -108,7 +108,7 @@ def get_joystick_axis(joy_i: int, axis: int) -> float:
         return raw_int / 127.0
 
 
-def get_joystick_button(joy_i: int, btn: int) -> float:
+def get_joystick_button(joy_i: int, btn: int) -> bool:
     assert 0 <= joy_i < JOYSTICK_NUM
     assert 0 <= btn < MAX_BUTTON_NUM
     joy, count = stick_buttons[joy_i], stick_button_counts[joy_i]

@@ -26,7 +26,7 @@ class FloatOutput:
 
         @float_build
         def update(ref: str):
-            yield "%s(%s(*%s, value, %s))" % (self.get_float_ref(), filter_ref, pre_args, post_args)
+            yield "%s(%s(*%s, value, *%s))" % (self.get_float_ref(), filter_ref, pre_args, post_args)
 
         return update
 
@@ -43,12 +43,12 @@ class FloatOutput:
 
         @float_build
         def update_target(ref: str):
-            yield "globals %s" % ramp_target
+            yield "global %s" % ramp_target
             yield "%s = value" % ramp_target
 
         @themis.channel.event.event_build
         def update_ramping(ref: str):
-            yield "globals %s, %s" % (ramp_target, ramp_current)
+            yield "global %s, %s" % (ramp_target, ramp_current)
             yield "%s = %s(%s, %s, %s)" % (
                 ramp_current, themis.codegen.ref(themis.exec.filters.ramping_update), ramp_current, ramp_target,
                 max_change_per_update)
@@ -129,7 +129,7 @@ class FloatInput:
         for value, input in zip((value_self, value_other), (self, other)):
             @float_build
             def update(ref: str):
-                yield "globals %s, %s" % (value_self, value_other)
+                yield "global %s, %s" % (value_self, value_other)
                 yield "%s = value" % (value,)
                 yield "%s(%s(*%s, %s, %s, *%s))" % \
                       (cell_out.get_float_ref(), filter_ref, pre_args, value_self, value_other, args)
