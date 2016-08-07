@@ -59,32 +59,21 @@ class GenerationContext:
         return GenerationContext._context_param.parameterize(self)
 
 
-def next_uid():
-    return GenerationContext.get_context().next_uid()
-
-
-def add_import(module):
-    GenerationContext.get_context().add_import(module)
-
-
-def add_code(code):
-    GenerationContext.get_context().add_code(code)
-
-
 def add_code_generator(gen):
     GenerationContext.get_context().add_code_generator(gen)
 
 
 def add_code_gen_ref(proc: typing.Callable[[str], typing.Generator[str, typing.Any, None]]) -> str:
-    ref = "ref%d" % next_uid()
+    ref = "ref%d" % GenerationContext.get_context().next_uid()
     add_code_generator(lambda: proc(ref))
     return ref
 
 
 def add_variable(default_value):
-    ref = "var%d" % next_uid()
-    add_code("%s = %s" % (ref, default_value))
-    return ref
+    def gen(ref: str):
+        yield "%s = %s" % (ref, default_value)
+
+    return add_code_gen_ref(gen)
 
 
 def get_prop_init(key, default_producer):
@@ -104,7 +93,7 @@ def ref(obj):
         mod, name = obj.__module__, obj.__name__
         assert getattr(importlib.import_module(mod), name, None) is obj, \
             "Function is not globally accessible - a prerequisite!"
-        add_import(mod)
+        GenerationContext.get_context().add_import(mod)
         return "%s.%s" % (mod, name)
     elif isinstance(obj, (int, float, bool)):
         return repr(obj)
