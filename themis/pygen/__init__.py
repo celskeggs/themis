@@ -34,6 +34,7 @@ class Instant:
         self._referenced_modules = set()
         self._referenced_boxes = set()
         self._referenced_instants = set()
+        self._refcount = 0
 
     def is_param_type(self, type_ref):
         return self._param_type == type_ref
@@ -51,6 +52,7 @@ class Instant:
             arg = arg.get_ref()
         if isinstance(arg, Instant):
             self._referenced_instants.add(arg)
+            arg._refcount += 1
             return typing.Callable[[] if arg._param_type is None else [arg._param_type], None], arg._instant
         else:
             assert False, "Invalid parameter (bad type): %s" % (arg,)
@@ -64,6 +66,7 @@ class Instant:
     def invoke(self, inst: "Instant", arg=None) -> None:
         assert isinstance(inst, Instant)
         self._referenced_instants.add(inst)
+        inst._refcount += 1
         if arg is None:
             assert inst._param_type is None
             self._calls.append("%s()" % (inst._instant,))
@@ -79,6 +82,7 @@ class Instant:
     def if_equal(self, comp_a, comp_b, target: "Instant", arg=None):
         assert isinstance(target, Instant)
         self._referenced_instants.add(target)
+        target._refcount += 1
         comp_type, gen_a = self._validate_type(comp_a)
         gen_b = self._validate_gen(comp_b, comp_type)
 
@@ -94,6 +98,7 @@ class Instant:
     def if_unequal(self, comp_a, comp_b, target: "Instant", arg=None):
         assert isinstance(target, Instant)
         self._referenced_instants.add(target)
+        target._refcount += 1
         comp_type, gen_a = self._validate_type(comp_a)
         gen_b = self._validate_gen(comp_b, comp_type)
 
@@ -111,6 +116,8 @@ class Instant:
         assert isinstance(when_false, Instant)
         self._referenced_instants.add(when_true)
         self._referenced_instants.add(when_false)
+        when_true._refcount += 1
+        when_false._refcount += 1
         comp_type, gen_a = self._validate_type(comp_a)
         gen_b = self._validate_gen(comp_b, comp_type)
 
@@ -135,6 +142,7 @@ class Instant:
         if instant_target is not None:
             assert isinstance(instant_target, Instant)
             self._referenced_instants.add(instant_target)
+            instant_target._refcount += 1
 
         mod, name = themis.pygen.annot.get_global_ref(filter_ref)
         self._referenced_modules.add(mod)
@@ -180,6 +188,7 @@ def _enumerate_instants(root_instant: Instant) -> typing.Set[Instant]:
 
 def generate_code(root_instant: Instant):
     assert root_instant.is_param_type(None)
+    root_instant._refcount += 1
     instants = _enumerate_instants(root_instant)
     modules = set().union(*(instant._referenced_modules for instant in instants))
     boxes = set().union(*(instant._referenced_boxes for instant in instants))
