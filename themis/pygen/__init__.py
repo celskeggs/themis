@@ -26,8 +26,10 @@ class Instant:
     def __init__(self, param_type):
         assert param_type in PARAM_TYPES
         self._param_type = param_type
-        self._param = uid.nstr("param%d")
-        self._instant = uid.nstr("instant%d")
+        if param_type is not None:
+            self._param = uid.nstr("param%d")
+        self._uid = uid.next()
+        self._instant = "instant%d" % self._uid
         self._calls = []
         self._referenced_modules = set()
         self._referenced_boxes = set()
@@ -151,7 +153,10 @@ class Instant:
             self._calls.append("%s(%s)" % (instant_target._instant, invocation))
 
     def _generate(self):
-        yield "def %s(%s: %s) -> None:" % (self._instant, self._param, PARAM_TYPES[self._param_type])
+        if self._param_type is None:
+            yield "def %s() -> None:" % (self._instant,)
+        else:
+            yield "def %s(%s: %s) -> None:" % (self._instant, self._param, PARAM_TYPES[self._param_type])
         if self._calls:
             if self._referenced_boxes:
                 yield "\tglobal %s" % ", ".join(box._box for box in self._referenced_boxes)
@@ -174,11 +179,13 @@ def _enumerate_instants(root_instant: Instant) -> typing.Set[Instant]:
 
 
 def generate_code(root_instant: Instant):
+    assert root_instant.is_param_type(None)
     instants = _enumerate_instants(root_instant)
     modules = set().union(*(instant._referenced_modules for instant in instants))
     boxes = set().union(*(instant._referenced_boxes for instant in instants))
     out = ["import %s" % (module,) for module in modules]
     out += [box._generate() for box in boxes]
-    for instant in instants:
+    for instant in sorted(instants, key=lambda instant: instant._uid):
         out += instant._generate()
+    out += ["def run() -> None:", "\t%s()" % root_instant._instant]
     return "\n".join(out)
