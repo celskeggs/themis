@@ -33,6 +33,11 @@ def invert(x: bool) -> bool:
     return not x
 
 
+# TODO: make it so we don't need these trivial wrappers here
+def and_bool(a: bool, b: bool) -> bool:
+    return a and b
+
+
 def operator(cached_inputs, output, operator, arguments):
     output(operator(*cached_inputs, *arguments))
 

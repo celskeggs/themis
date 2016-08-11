@@ -4,7 +4,6 @@ import themis.auto
 import themis.channel
 import themis.codegen
 import themis.codehelpers
-import themis.codeinit
 import themis.exec
 import themis.joystick
 import themis.pwm
@@ -57,22 +56,21 @@ class GPIO:
         self._gpio_assignments[gpio_pin] = GPIO.INPUT
         if interrupt:
             interrupt_id = self._alloc_interrupt()
-            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_interrupt),
-                                          themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin, interrupt_id))
+            themis.codegen.add_init_call(themis.exec.frc.gpio_init_input_interrupt,
+                                         themis.codegen.InitPhase.PHASE_INIT_IO, gpio_pin, interrupt_id)
             bool_out, bool_in = themis.channel.boolean_cell(False)  # TODO: default value
-            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_start_interrupt),
-                                          themis.codeinit.Phase.PHASE_BEGIN, args=(gpio_pin, interrupt_id, bool_out))
+            themis.codegen.add_init_call(themis.exec.frc.gpio_start_interrupt, themis.codegen.InitPhase.PHASE_BEGIN,
+                                         gpio_pin, interrupt_id, bool_out)
             return bool_in
         else:
-            themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.gpio_init_input_poll),
-                                          themis.codeinit.Phase.PHASE_INIT_IO, args=(gpio_pin,))
+            themis.codegen.add_init_call(themis.exec.frc.gpio_init_input_poll,
+                                         themis.codegen.InitPhase.PHASE_INIT_IO, gpio_pin)
             return themis.codehelpers.poll_boolean(self._poll_event, themis.exec.frc.gpio_poll_input, args=(gpio_pin,))
 
 
 class PWM:
     def __init__(self):
-        themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.pwm_init_config),
-                                      themis.codeinit.Phase.PHASE_INIT_IO)
+        themis.codegen.add_init_call(themis.exec.frc.pwm_init_config, themis.codegen.InitPhase.PHASE_INIT_IO)
 
     def talon_sr(self, pwm_id: int) -> themis.channel.FloatOutput:
         return self.pwm_controller(pwm_id, themis.pwm.TALON_SR)
@@ -105,8 +103,8 @@ class PWM:
     def pwm_raw(self, pwm_id: int, frequency: float, latch_pwm_zero: bool = False) -> themis.channel.FloatOutput:
         assert 0 <= pwm_id < themis.exec.frc.PWM_NUM
         squelch = themis.exec.frc.pwm_frequency_to_squelch(frequency)
-        themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.pwm_init), themis.codeinit.Phase.PHASE_INIT_IO,
-                                      args=(pwm_id, squelch, latch_pwm_zero))
+        themis.codegen.add_init_call(themis.exec.frc.pwm_init, themis.codegen.InitPhase.PHASE_INIT_IO, pwm_id, squelch,
+                                     latch_pwm_zero)
         return themis.codehelpers.push_float(themis.exec.frc.pwm_update, extra_args=(pwm_id,))
 
 
@@ -131,8 +129,7 @@ class PCM:
 class DriverStation:
     def __init__(self):
         update_out, self._update = themis.channel.event_cell()
-        themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.ds_begin), themis.codeinit.Phase.PHASE_BEGIN,
-                                      args=(update_out,))
+        themis.codegen.add_init_call(themis.exec.frc.ds_begin, themis.codegen.InitPhase.PHASE_BEGIN, update_out)
         self.joysticks = [Joystick(i, self._update) for i in range(themis.exec.frc.JOYSTICK_NUM)]
         self._get_mode = None
 

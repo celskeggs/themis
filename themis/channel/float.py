@@ -1,5 +1,6 @@
 import typing
 
+import themis.pygen
 import themis.codegen
 import themis.exec
 
@@ -7,28 +8,22 @@ __all__ = ["FloatOutput", "FloatInput", "float_cell", "always_float"]
 
 
 class FloatOutput:
-    def __init__(self, reference: str):
-        assert isinstance(reference, str)
-        self._ref = reference
+    def __init__(self, instant: themis.pygen.Instant):
+        assert isinstance(instant, themis.pygen.Instant)
+        assert instant.is_param_type(float)
+        self._instant = instant
         self._sets = {}
 
-    def get_float_ref(self) -> str:
-        return self._ref
+    def get_ref(self) -> themis.pygen.Instant:
+        return self._instant
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
     def filter(self, filter_func, pre_args=(), post_args=()) -> "FloatOutput":
-        assert isinstance(pre_args, tuple) and isinstance(post_args, tuple)
-        filter_ref = themis.codegen.ref(filter_func)
-        pre_args = themis.codegen.ref(pre_args)
-        post_args = themis.codegen.ref(post_args)
-
-        @float_build
-        def update(ref: str):
-            yield "%s(%s(*%s, value, *%s))" % (self.get_float_ref(), filter_ref, pre_args, post_args)
-
-        return update
+        instant = themis.pygen.Instant(float)
+        instant.transform(filter_func, self.get_ref(), *pre_args, themis.pygen.Param, *post_args)
+        return FloatOutput(instant)
 
     # note: different ramping scale than the CCRE
     # TODO: handle default targets better
@@ -91,23 +86,24 @@ class FloatOutput:
         assert isinstance(value, (int, float))
         value = float(value)
         if value not in self._sets:
-            @themis.channel.event.event_build
-            def event_set(ref: str):
-                yield "%s(%s)" % (self.get_float_ref(), repr(value))
-
-            self._sets[value] = event_set
+            instant = themis.pygen.Instant(None)
+            instant.invoke(self.get_ref(), value)
+            self._sets[value] = themis.channel.EventOutput(instant)
         return self._sets[value]
 
 
 class FloatInput:
-    def __init__(self, targets: list):
-        assert isinstance(targets, list)
-        self._targets = targets
+    def __init__(self, instant: themis.pygen.Instant, default_value: float):
+        assert isinstance(instant, themis.pygen.Instant)
+        assert instant.is_param_type(float)
+        assert isinstance(default_value, (int, float))
+        self._instant = instant
+        self._default_value = default_value
 
     def send(self, output: FloatOutput) -> None:
         assert isinstance(output, FloatOutput)
         # TODO: default value?
-        self._targets.append(output.get_float_ref())
+        self._instant.invoke(output.get_ref(), themis.pygen.Param)
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
@@ -189,29 +185,10 @@ class FloatInput:
         return self.filter(themis.exec.filters.negate)
 
 
-def float_build(body_gen) -> FloatOutput:
-    def gen(ref: str):
-        yield "def %s(value: float) -> None:" % ref
-        for line in body_gen(ref):
-            yield "\t%s" % (line,)
-
-    return FloatOutput(themis.codegen.add_code_gen_ref(gen))
-
-
 def float_cell(default_value) -> typing.Tuple[FloatOutput, FloatInput]:
-    # TODO: use default_value
-    targets = []
-
-    @float_build
-    def dispatch(ref: str):
-        if targets:
-            for target in targets:
-                yield "%s(value)" % (target,)
-        else:
-            yield "pass"
-
-    return dispatch, FloatInput(targets)
+    instant = themis.pygen.Instant(float)
+    return FloatOutput(instant), FloatInput(instant, default_value)
 
 
-def always_float(value):
+def always_float(value) -> FloatInput:
     return float_cell(value)[1]

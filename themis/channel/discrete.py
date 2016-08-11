@@ -1,9 +1,9 @@
-import abc
+import string
 import typing
+
 import themis.channel.event
 import themis.codegen
-import enum
-import string
+import themis.pygen
 
 __all__ = ["DiscreteOutput", "DiscreteInput", "discrete_cell", "always_discrete", "Discrete"]
 
@@ -25,15 +25,15 @@ class Discrete:
 
 
 class DiscreteOutput:
-    def __init__(self, reference: str, discrete_type: Discrete):
-        assert isinstance(reference, str)
+    def __init__(self, instant: themis.pygen.Instant, discrete_type: Discrete):
+        assert isinstance(instant, themis.pygen.Instant)
         assert isinstance(discrete_type, Discrete)
-        self._ref = reference
+        self._instant = instant
         self.discrete_type = discrete_type
         self._sets = {}
 
-    def get_discrete_ref(self) -> str:
-        return self._ref
+    def get_ref(self) -> themis.pygen.Instant:
+        return self._instant
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
@@ -52,60 +52,35 @@ class DiscreteOutput:
 
 
 class DiscreteInput:
-    def __init__(self, targets: list, discrete_type: Discrete):
-        assert isinstance(targets, list)
-        self._targets = targets
+    def __init__(self, instant: themis.pygen.Instant, default_value: str, discrete_type: Discrete):
+        assert isinstance(instant, themis.pygen.Instant)
+        self._instant = instant
         assert isinstance(discrete_type, Discrete)
         self.discrete_type = discrete_type
+        assert default_value in discrete_type
+        self._default_value = default_value
 
     def send(self, output: DiscreteOutput) -> None:
         assert self.discrete_type == output.discrete_type
-        self._targets.append(output.get_discrete_ref())
+        # TODO: DEFAULT VALUE
+        self._instant.invoke(output.get_ref(), themis.pygen.Param)
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
     def is_value(self, value: str) -> "themis.channel.boolean.BooleanInput":
         value_int = self.discrete_type.numeric(value)
-        cell_out, cell_in = themis.channel.boolean.boolean_cell(False)  # TODO: default value
-
-        @discrete_build(self.discrete_type)
-        def update(ref: str):
-            yield "%s(value == %s)" % (cell_out.get_boolean_ref(), value_int)
-
-        self.send(update)
-        return cell_in
-
-
-def discrete_build(discrete_type: Discrete):
-    assert isinstance(discrete_type, Discrete)
-
-    def bound_build(body_gen) -> DiscreteOutput:
-        def gen(ref: str):
-            yield "def %s(value: int) -> None:" % ref
-            for line in body_gen(ref):
-                yield "\t%s" % (line,)
-
-        return DiscreteOutput(themis.codegen.add_code_gen_ref(gen), discrete_type)
-
-    return bound_build
+        instant = themis.pygen.Instant(bool)
+        # TODO: optimize to expression, maybe?
+        self._instant.if_else(themis.pygen.Param, value_int, instant, instant, True, False)
+        return themis.channel.boolean.BooleanInput(instant, self._default_value == value_int)
 
 
 def discrete_cell(default_value: str, discrete_type: Discrete) -> typing.Tuple[DiscreteOutput, DiscreteInput]:
     assert isinstance(discrete_type, Discrete)
     assert default_value in discrete_type
-    # TODO: use default_value
-    targets = []
-
-    @discrete_build(discrete_type)
-    def dispatch(ref: str):
-        if targets:
-            for target in targets:
-                yield "%s(value)" % (target,)
-        else:
-            yield "pass"
-
-    return dispatch, DiscreteInput(targets, discrete_type)
+    instant = themis.pygen.Instant(int)
+    return DiscreteOutput(instant, discrete_type), DiscreteInput(instant, default_value, discrete_type)
 
 
 def always_discrete(value: str, discrete_type: Discrete):

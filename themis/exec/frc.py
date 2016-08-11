@@ -1,6 +1,7 @@
 import threading
 import math
 import themis.exec.runloop
+import typing
 
 MODE_DISABLED = 0
 MODE_AUTONOMOUS = 1
@@ -27,7 +28,7 @@ ds_ready = True
 robot_mode = MODE_DISABLED
 
 
-def ds_begin(target):
+def ds_begin(target: typing.Callable[[], None]) -> None:
     threading.Thread(target=ds_mainloop, args=(target,)).start()
 
 
@@ -48,7 +49,7 @@ def ds_calc_mode(word):
         return MODE_TELEOP
 
 
-def ds_mainloop(target):
+def ds_mainloop(target: typing.Callable[[], None]):
     global ds_ready, robot_mode
     data_mutex = cffi_stub.HALUtil.initializeMutexNormal()
     data_semaphor = cffi_stub.HALUtil.initializeMultiWait()
@@ -135,13 +136,13 @@ PWM_SHIFT = None
 PWM_MULTIPLIER = None
 
 
-def pwm_init_config():
+def pwm_init_config() -> None:
     global PWM_MULTIPLIER, PWM_SHIFT
     PWM_MULTIPLIER = PWM_CLOCK_KHZ / cffi_stub.DIOJNI.getLoopTiming()
     PWM_SHIFT = PWM_STEPS - 1 - PWM_GEN_CENTER * PWM_MULTIPLIER
 
 
-def pwm_init(pwm_id: int, squelch: int, latch_pwm_zero: float) -> None:
+def pwm_init(pwm_id: int, squelch: int, latch_pwm_zero: bool) -> None:
     assert pwms[pwm_id] is None
     port = cffi_stub.DIOJNI.initializeDigitalPort(cffi_stub.JNIWrapper.getPort(pwm_id))
     assert cffi_stub.PWMJNI.allocatePWMChannel(port), "PWM already allocated!"
@@ -152,7 +153,7 @@ def pwm_init(pwm_id: int, squelch: int, latch_pwm_zero: float) -> None:
     pwms[pwm_id] = port
 
 
-def pwm_update(millis: float, pwm_id: int):
+def pwm_update(millis: float, pwm_id: int) -> None:
     if math.isnan(millis):
         cffi_stub.PWMJNI.setPWM(pwm_id, 0)
     else:
@@ -179,19 +180,19 @@ GPIOS = [None] * GPIO_NUM
 INTERRUPTS = [None] * INTERRUPT_NUM
 
 
-def gpio_init_input_poll(gpio_pin: int):
+def gpio_init_input_poll(gpio_pin: int) -> None:
     assert GPIOS[gpio_pin] is None
     GPIOS[gpio_pin] = cffi_stub.DIOJNI.initializeDigitalPort(cffi_stub.JNIWrapper.getPort(gpio_pin))
     cffi_stub.DIOJNI.allocateDIO(gpio_pin, True)  # True: as input
 
 
-def gpio_poll_input(gpio_pin: int):
+def gpio_poll_input(gpio_pin: int) -> bool:
     port = GPIOS[gpio_pin]
     assert port is not None
     return cffi_stub.DIOJNI.getDIO(port)
 
 
-def gpio_init_input_interrupt(gpio_pin: int, interrupt_id: int):
+def gpio_init_input_interrupt(gpio_pin: int, interrupt_id: int) -> None:
     assert INTERRUPTS[interrupt_id] is None
     gpio_init_input_poll(gpio_pin)
     interrupt_port = cffi_stub.InterruptJNI.initializeInterrupts(interrupt_id, True)  # True: synchronous
@@ -200,7 +201,7 @@ def gpio_init_input_interrupt(gpio_pin: int, interrupt_id: int):
     INTERRUPTS[interrupt_id] = interrupt_port
 
 
-def gpio_start_interrupt(gpio_pin: int, interrupt_id: int, callback):
+def gpio_start_interrupt(gpio_pin: int, interrupt_id: int, callback: typing.Callable[[bool], None]) -> None:
     interrupt_port = INTERRUPTS[interrupt_id]
     assert interrupt_port is not None
     gpio_port = GPIOS[gpio_pin]
@@ -208,7 +209,7 @@ def gpio_start_interrupt(gpio_pin: int, interrupt_id: int, callback):
     threading.Thread(target=gpio_interrupt_handler_thread, args=(gpio_port, interrupt_port, callback)).start()
 
 
-def gpio_interrupt_handler_thread(gpio_port, interrupt_port, callback):
+def gpio_interrupt_handler_thread(gpio_port: int, interrupt_port: int, callback: typing.Callable[[bool], None]) -> None:
     last_value = None
     while True:
         # TODO: optimize based on timing out or not
