@@ -23,8 +23,6 @@ stick_buttons = [0] * JOYSTICK_NUM
 stick_button_counts = [0] * JOYSTICK_NUM
 
 cffi_stub = None
-ds_ready_cond = threading.Lock()
-ds_ready = True
 robot_mode = MODE_DISABLED
 
 
@@ -49,11 +47,34 @@ def ds_calc_mode(word):
         return MODE_TELEOP
 
 
+class NotificationFlag:
+    def __init__(self, default: bool):
+        self._value = default
+        self._lock = threading.Lock()
+
+    def take(self) -> bool:
+        with self._lock:
+            if self._value:
+                self._value = False
+                return True
+            return False
+
+    def set(self) -> None:
+        with self._lock:
+            self._value = True
+
+
 def ds_mainloop(target: typing.Callable[[], None]):
     global ds_ready, robot_mode
     data_mutex = cffi_stub.HALUtil.initializeMutexNormal()
     data_semaphor = cffi_stub.HALUtil.initializeMultiWait()
     cffi_stub.FRCNetworkCommunicationsLibrary.setNewDataSem(data_semaphor)
+
+    ds_ready = NotificationFlag(True)
+    def dispatch():
+        ds_ready.set()
+        target()
+
     while True:
         cffi_stub.HALUtil.takeMultiWait(data_semaphor, data_mutex)
 
@@ -79,17 +100,8 @@ def ds_mainloop(target: typing.Callable[[], None]):
             stick_buttons[stick] = cffi_stub.FRCNetworkCommunicationsLibrary.HALGetJoystickButtons(stick, count_buffer)
             stick_button_counts[stick] = count_buffer.get(0)
 
-        with ds_ready_cond:
-            if ds_ready:
-                themis.exec.runloop.queue_event(target)
-                ds_ready = False
-
-
-def ds_dispatch():
-    global ds_ready
-    with ds_ready_cond:
-        ds_ready = True
-    ds_dispatch_event()
+        if ds_ready.take():
+            themis.exec.runloop.queue_event(dispatch)
 
 
 def get_robot_mode() -> int:
