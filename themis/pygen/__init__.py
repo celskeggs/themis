@@ -49,7 +49,7 @@ class Instant:
         if arg is Param:
             return self._param_type, self._param
         elif isinstance(arg, Box):
-            return arg._box_type, arg._box
+            return arg._box_type, arg
         elif type(arg) in PARAM_TYPES:
             return type(arg), repr(arg)
         elif hasattr(arg, "get_ref"):

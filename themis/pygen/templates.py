@@ -39,11 +39,11 @@ def if_else(condition, body_true, body_false) -> str:
 
 
 def equals(a, b) -> str:
-    return "%s == %s" % (a, b)
+    return "%s == %s" % (apply(a), apply(b))
 
 
 def not_equals(a, b) -> str:
-    return "%s != %s" % (a, b)
+    return "%s != %s" % (apply(a), apply(b))
 
 
 def nop() -> str:
