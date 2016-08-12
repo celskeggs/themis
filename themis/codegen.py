@@ -1,4 +1,5 @@
 import themis.pygen
+import themis.exec.runloop
 import themis.util
 import enum
 
@@ -13,7 +14,9 @@ class GenerationContext:
     _context_param = themis.util.Parameter(None)
 
     def __init__(self):
+        self._root_init = themis.pygen.Instant(None)
         self._initialize = themis.pygen.Instant(None)
+        self._root_init.transform(themis.exec.runloop.enter_loop, None, self._initialize)
         self._init_phases = {}
         for phase in InitPhase:
             inst = themis.pygen.Instant(None)
@@ -28,7 +31,7 @@ class GenerationContext:
         self._init_phases[phase].transform(target, None, *args)
 
     def generate_code(self):
-        return themis.pygen.generate_code(self._initialize)
+        return themis.pygen.generate_code(self._root_init)
 
     def get_prop_init(self, key, default_producer):
         if key not in self._properties:

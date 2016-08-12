@@ -71,6 +71,7 @@ def ds_mainloop(target: typing.Callable[[], None]):
     cffi_stub.FRCNetworkCommunicationsLibrary.setNewDataSem(data_semaphor)
 
     ds_ready = NotificationFlag(True)
+
     def dispatch():
         ds_ready.set()
         target()
@@ -222,6 +223,12 @@ def gpio_start_interrupt(gpio_pin: int, interrupt_id: int, callback: typing.Call
 
 
 def gpio_interrupt_handler_thread(gpio_port: int, interrupt_port: int, callback: typing.Callable[[bool], None]) -> None:
+    def cb_true():
+        callback(True)
+
+    def cb_false():
+        callback(False)
+
     last_value = None
     while True:
         # TODO: optimize based on timing out or not
@@ -230,4 +237,4 @@ def gpio_interrupt_handler_thread(gpio_port: int, interrupt_port: int, callback:
         value = cffi_stub.DIOJNI.getDIO(gpio_port)
         if value != last_value:
             last_value = value
-            themis.exec.runloop.queue_event(callback, value)
+            themis.exec.runloop.queue_event(cb_true if value else cb_false)
