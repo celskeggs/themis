@@ -150,9 +150,15 @@ def opt_eliminate_nops(root_instant, instants):
 
 
 def check_get_simple_call(instant):
-    if len(instant._body) == 1 and instant._body[0][0] == themis.pygen.templates.invoke_unary and isinstance(
-            instant._body[0][1], themis.pygen.Instant) and instant._body[0][2] == instant._param:
-        return instant._body[0][1]
+    if len(instant._body) != 1: return
+    if instant._param_type is None:
+        if instant._body[0][0] == themis.pygen.templates.invoke_nullary \
+                and isinstance(instant._body[0][1], themis.pygen.Instant):
+            return instant._body[0][1]
+    else:
+        if instant._body[0][0] == themis.pygen.templates.invoke_unary \
+                and isinstance(instant._body[0][1], themis.pygen.Instant) and instant._body[0][2] == instant._param:
+            return instant._body[0][1]
 
 
 @opt_pass
@@ -239,4 +245,5 @@ def opt_inline(root_instant, instants: set):
 def optimize(root_instant, instants):
     for op in _opt_passes:
         root_instant, instants = op(root_instant, instants)
+
     return root_instant, instants
