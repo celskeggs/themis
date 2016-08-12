@@ -190,8 +190,20 @@ def calculate_refcounts(root_instant, instants):
     return refs
 
 
+def get_modified_variables(instant):
+    refed = {instant._param} if instant._param_type is not None else set()
+
+    def walker(tree):
+        if type(tree) == tuple and tree[0] == themis.pygen.templates.set:
+            refed.add(tree[1])
+
+    tree_walk_ro(instant._body, walker)
+
+    return refed
+
+
 @opt_pass
-def opt_inline_tail(root_instant, instants: set):
+def opt_inline(root_instant, instants: set):
     refs = calculate_refcounts(root_instant, instants)
     inlineable = [instant for instant, ref in refs.items() if len(ref) == 1 and instant is not root_instant]
     inlineable.sort(key=lambda x: x._uid)
@@ -201,19 +213,24 @@ def opt_inline_tail(root_instant, instants: set):
         while refed_in in actually_inlined:
             refed_in = refs[refed_in][0]
         assert refed_in is not instant
-        if refed_in._body[-1][0] not in (themis.pygen.templates.invoke_nullary, themis.pygen.templates.invoke_unary)\
-                or refed_in._body[-1][1] != instant:
+        if get_modified_variables(refed_in).intersection(get_modified_variables(instant)):
+            print("VARDUP BYPASS", instant._instant, "INTO", refed_in._instant)
             continue
-        if refed_in._body[-1][0] == themis.pygen.templates.invoke_nullary:
+        found_line = [i for i, line in enumerate(refed_in._body)
+                      if line[0] in (themis.pygen.templates.invoke_nullary, themis.pygen.templates.invoke_unary)
+                      and line[1] == instant]
+        if not found_line:
+            continue
+        assert len(found_line) == 1
+        line_id = found_line[0]
+        if refed_in._body[line_id][0] == themis.pygen.templates.invoke_nullary:
             assert instant._param_type is None
-            del refed_in._body[-1]
-            refed_in._body += instant._body
+            refed_in._body[line_id:line_id + 1] = instant._body
         else:
             assert instant._param_type is not None
-            refed_in._body[-1] = (themis.pygen.templates.set, instant._param, refed_in._body[-1][2])
-            refed_in._body += instant._body
+            refed_in._body[line_id:line_id + 1] = [(themis.pygen.templates.set, instant._param,
+                                                    refed_in._body[line_id][2])] + instant._body
         actually_inlined.append(instant)
-        print("INLINE", instant._instant)
 
     instants.difference_update(actually_inlined)
     return root_instant, instants
