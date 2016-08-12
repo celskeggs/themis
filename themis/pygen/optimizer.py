@@ -74,6 +74,13 @@ def replace_walk_in_instants(instants, walker):
             instant._body = value
 
 
+def tree_walk_ro(tree, walker):
+    if type(tree) == list or type(tree) == tuple:
+        for subtree in tree:
+            tree_walk_ro(subtree, walker)
+    walker(tree)
+
+
 def opt_pass(op):
     _opt_passes.append(op)
 
@@ -166,6 +173,49 @@ def opt_inline_simple(root_instant, instants: set):
         return tree
 
     replace_in_instants(instants, [instant for instant in remaps.keys()], substitutor, replace_before=True)
+    return root_instant, instants
+
+
+def calculate_refcounts(root_instant, instants):
+    refs = {instant: [] for instant in instants}
+    refs[root_instant].append(None)
+
+    for instant in instants:
+        def walker(tree):
+            if isinstance(tree, themis.pygen.Instant):
+                refs[tree].append(instant)
+
+        tree_walk_ro(instant._body, walker)
+
+    return refs
+
+
+@opt_pass
+def opt_inline_tail(root_instant, instants: set):
+    refs = calculate_refcounts(root_instant, instants)
+    inlineable = [instant for instant, ref in refs.items() if len(ref) == 1 and instant is not root_instant]
+    inlineable.sort(key=lambda x: x._uid)
+    actually_inlined = []
+    for instant in inlineable:
+        refed_in = refs[instant][0]
+        while refed_in in actually_inlined:
+            refed_in = refs[refed_in][0]
+        assert refed_in is not instant
+        if refed_in._body[-1][0] not in (themis.pygen.templates.invoke_nullary, themis.pygen.templates.invoke_unary)\
+                or refed_in._body[-1][1] != instant:
+            continue
+        if refed_in._body[-1][0] == themis.pygen.templates.invoke_nullary:
+            assert instant._param_type is None
+            del refed_in._body[-1]
+            refed_in._body += instant._body
+        else:
+            assert instant._param_type is not None
+            refed_in._body[-1] = (themis.pygen.templates.set, instant._param, refed_in._body[-1][2])
+            refed_in._body += instant._body
+        actually_inlined.append(instant)
+        print("INLINE", instant._instant)
+
+    instants.difference_update(actually_inlined)
     return root_instant, instants
 
 

@@ -27,7 +27,7 @@ def invoke_poly(target, args: list) -> str:
 
 
 def set(variable, value: str) -> str:
-    return "%s = %s" % (apply(variable), value)
+    return "%s = %s" % (apply(variable), apply(value))
 
 
 def if_then(condition, body) -> str:
