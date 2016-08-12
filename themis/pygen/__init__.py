@@ -11,7 +11,6 @@ uid = counter.Counter()
 
 Param = object()
 
-
 __all__ = ["Box", "Instant", "generate_code", "Param"]
 
 
@@ -189,13 +188,24 @@ def _enumerate_instants(root_instant: Instant) -> typing.Set[Instant]:
 
 def generate_code(root_instant: Instant):
     assert root_instant.is_param_type(None)
+
+    # find all involved instants
     instants = _enumerate_instants(root_instant)
-    root_instant, instants = optimizer.optimize(root_instant, instants)
+
+    # find import references first, before the optimizer can mess them up
     modules = set().union(*(instant._referenced_modules for instant in instants))
+
+    # optimize the setup
+    root_instant, instants = optimizer.optimize(root_instant, instants)
+
+    # find all involved boxes
     boxes = set().union(*(instant._referenced_boxes for instant in instants))
+
+    # generate code
     out = ["import %s" % (module,) for module in modules]
     out += [box._generate() for box in boxes]
     for instant in sorted(instants, key=lambda instant: instant._uid):
         out += instant._generate()
     out += ["%s()" % root_instant._instant]
+
     return "\n".join(out)
