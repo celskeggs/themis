@@ -46,6 +46,10 @@ def equals(a: int, b: int) -> bool:
     return a == b
 
 
+def choose_float(cond: bool, a: float, b: float) -> float:
+    return a if cond else b
+
+
 def operator(cached_inputs, output, operator, arguments):
     output(operator(*cached_inputs, *arguments))
 
@@ -63,7 +67,7 @@ def pwm_map(value: float, rev_max: float, rev_min: float, center: float, fwd_min
         return center
 
 
-def ramping_update(previous, target, max_change_per_update):
+def ramping_update(previous: float, target: float, max_change_per_update: float) -> float:
     if previous < target:
         return min(target, previous + max_change_per_update)
     else:

@@ -164,13 +164,13 @@ def pwm_update(millis: float, pwm_id: int) -> None:
 solenoids = [[None] * SOLENOID_NUM for i in range(PCM_NUM)]
 
 
-def solenoid_init(pcm_id: int, solenoid_id: int):
+def solenoid_init(pcm_id: int, solenoid_id: int) -> None:
     assert solenoids[pcm_id][solenoid_id] is None
     solenoids[pcm_id][solenoid_id] = cffi_stub.SolenoidJNI.initializeSolenoidPort(
         cffi_stub.SolenoidJNI.getPortWithModule(pcm_id, solenoid_id))
 
 
-def solenoid_update(on: bool, pcm_id: int, solenoid_id: int):
+def solenoid_update(on: bool, pcm_id: int, solenoid_id: int) -> None:
     port = solenoids[pcm_id][solenoid_id]
     assert port is not None
     cffi_stub.SolenoidJNI.setSolenoid(port, on)

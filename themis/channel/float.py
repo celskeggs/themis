@@ -33,35 +33,29 @@ class FloatOutput:
         ticker = themis.timers.ticker(update_rate_ms)
         max_change_per_update = (change_per_second * (update_rate_ms / 1000.0))
 
-        ramp_target = themis.codegen.add_variable(default_target)
-        ramp_current = themis.codegen.add_variable(default_target)
+        ramp_target = themis.pygen.Box(float(default_target))
+        ramp_current = themis.pygen.Box(float(default_target))
 
-        @float_build
-        def update_target(ref: str):
-            yield "global %s" % ramp_target
-            yield "%s = value" % ramp_target
+        update_target = themis.pygen.Instant(float)
+        update_target.set(ramp_target, themis.pygen.Param)
 
-        @themis.channel.event.event_build
-        def update_ramping(ref: str):
-            yield "global %s, %s" % (ramp_target, ramp_current)
-            yield "%s = %s(%s, %s, %s)" % (
-                ramp_current, themis.codegen.ref(themis.exec.filters.ramping_update), ramp_current, ramp_target,
-                max_change_per_update)
-            yield "%s(%s)" % (self.get_float_ref(), ramp_current)
+        update_ramping = themis.pygen.Instant(float)
+        ticker.get_instant().transform(themis.exec.filters.ramping_update, update_ramping, ramp_current, ramp_target,
+                                       max_change_per_update)
+        update_ramping.set(ramp_current, themis.pygen.Param)
+        update_ramping.invoke(self.get_ref(), themis.pygen.Param)
 
-        ticker.send(update_ramping)
-        return update_target
+        return FloatOutput(update_target)
 
     def __add__(self, other: "FloatOutput") -> "FloatOutput":
         if not isinstance(other, FloatOutput):
             return NotImplemented
 
-        @float_build
-        def combined(ref: str):
-            yield "%s(value)" % self.get_float_ref()
-            yield "%s(value)" % other.get_float_ref()
+        instant = themis.pygen.Instant(float)
+        instant.invoke(self.get_ref(), themis.pygen.Param)
+        instant.invoke(other.get_ref(), themis.pygen.Param)
 
-        return combined
+        return FloatOutput(instant)
 
     def __radd__(self, other: "FloatOutput") -> "FloatOutput":
         assert not isinstance(other, FloatOutput), "should not need to dispatch like that"
@@ -114,23 +108,14 @@ class FloatInput:
         return cell_in
 
     def operation(self, filter_func, other: "FloatInput", *args, pre_args=()) -> "FloatInput":
-        cell_out, cell_in = float_cell(0)  # TODO: default value
+        cell_out, cell_in = float_cell(filter_func(*pre_args, self._default_value, other._default_value, *args))
 
-        filter_ref = themis.codegen.ref(filter_func)
-        args = themis.codegen.ref(args)
-        pre_args = themis.codegen.ref(pre_args)
+        value_self = themis.pygen.Box(self._default_value)
+        value_other = themis.pygen.Box(other._default_value)
 
-        value_self = themis.codegen.add_variable(0)  # TODO: default value
-        value_other = themis.codegen.add_variable(0)
         for value, input in zip((value_self, value_other), (self, other)):
-            @float_build
-            def update(ref: str):
-                yield "global %s, %s" % (value_self, value_other)
-                yield "%s = value" % (value,)
-                yield "%s(%s(*%s, %s, %s, *%s))" % \
-                      (cell_out.get_float_ref(), filter_ref, pre_args, value_self, value_other, args)
-
-            input.send(update)
+            input._instant.set(value, themis.pygen.Param)
+            input._instant.transform(filter_func, cell_out.get_ref(), *pre_args, value_self, value_other, *args)
         return cell_in
 
     def deadzone(self, zone: float) -> "FloatInput":

@@ -80,34 +80,24 @@ class BooleanInput:
 
     def choose_float(self, when_false: "themis.channel.float.FloatInput", when_true: "themis.channel.float.FloatInput") \
             -> "themis.channel.float.FloatInput":
-        cell_out, cell_in = themis.channel.float.float_cell(0)  # TODO: default values
+        # TODO: do default values without accessing private fields
+        cell_out, cell_in = themis.channel.float.float_cell(when_true._default_value if self._default_value else
+                                                            when_false._default_value)
 
-        # TODO: DEFAULT VALUES
-        condition = themis.codegen.add_variable(False)
-        var_true = themis.codegen.add_variable(0)
-        var_false = themis.codegen.add_variable(0)
+        condition = themis.pygen.Box(self._default_value)
+        var_true = themis.pygen.Box(when_true._default_value)
+        var_false = themis.pygen.Box(when_false._default_value)
 
-        @boolean_build
-        def update_cond(ref: str):
-            yield "global %s, %s, %s" % (condition, var_true, var_false)
-            yield "%s = value" % condition
-            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
+        self._instant.set(condition, themis.pygen.Param)
+        self._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true, var_false)
 
-        @themis.channel.float.float_build
-        def update_true(ref: str):
-            yield "global %s, %s, %s" % (condition, var_true, var_false)
-            yield "%s = value" % var_true
-            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
+        when_true._instant.set(var_true, themis.pygen.Param)
+        when_true._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true,
+                                     var_false)
 
-        @themis.channel.float.float_build
-        def update_false(ref: str):
-            yield "global %s, %s, %s" % (condition, var_true, var_false)
-            yield "%s = value" % var_false
-            yield "%s(%s if %s else %s)" % (cell_out.get_float_ref(), var_true, condition, var_false)
-
-        self.send(update_cond)
-        when_false.send(update_false)
-        when_true.send(update_true)
+        when_false._instant.set(var_false, themis.pygen.Param)
+        when_false._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true,
+                                      var_false)
 
         return cell_in
 
@@ -188,20 +178,12 @@ class BooleanIO:
     @property
     @themis.util.memoize_field
     def toggle(self) -> "themis.channel.event.EventOutput":
-        last_value = themis.codegen.add_variable(False)  # TODO: default value
+        last_value = themis.pygen.Box(self.input._default_value)
+        self.input._instant.set(last_value, themis.pygen.Param)
 
-        @boolean_build
-        def update_saved_value(ref: str):
-            yield "global %s" % last_value
-            yield "%s = value" % last_value
-
-        @themis.channel.event.event_build
-        def toggle(ref: str):
-            yield "global %s" % last_value
-            yield "%s(not %s)" % (self.output.get_boolean_ref(), last_value)
-
-        self.input.send(update_saved_value)
-        return toggle
+        instant = themis.pygen.Instant(None)
+        instant.transform(themis.exec.filters.invert, self.output.get_ref(), last_value)
+        return themis.channel.event.EventOutput(instant)
 
 
 # TODO: should we be doing deduplication in cells? probably.

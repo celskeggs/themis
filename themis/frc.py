@@ -121,8 +121,8 @@ class PCM:
 
     def solenoid(self, solenoid_id):
         assert 0 <= solenoid_id < themis.exec.frc.SOLENOID_NUM
-        themis.codeinit.add_init_call(themis.codegen.ref(themis.exec.frc.solenoid_init),
-                                      themis.codeinit.Phase.PHASE_INIT_IO, args=(self._id, solenoid_id))
+        themis.codegen.add_init_call(themis.exec.frc.solenoid_init, themis.codegen.InitPhase.PHASE_INIT_IO, self._id,
+                                     solenoid_id)
         return themis.codehelpers.push_boolean(themis.exec.frc.solenoid_update, extra_args=(self._id, solenoid_id))
 
 
