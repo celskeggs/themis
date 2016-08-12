@@ -1,7 +1,8 @@
-import threading
 import math
-import themis.exec.runloop
+import threading
 import typing
+
+import themisexec.runloop
 
 MODE_DISABLED = 0
 MODE_AUTONOMOUS = 1
@@ -102,7 +103,7 @@ def ds_mainloop(target: typing.Callable[[], None]):
             stick_button_counts[stick] = count_buffer.get(0)
 
         if ds_ready.take():
-            themis.exec.runloop.queue_event(dispatch)
+            themisexec.runloop.queue_event(dispatch)
 
 
 def get_robot_mode() -> int:
@@ -237,4 +238,4 @@ def gpio_interrupt_handler_thread(gpio_port: int, interrupt_port: int, callback:
         value = cffi_stub.DIOJNI.getDIO(gpio_port)
         if value != last_value:
             last_value = value
-            themis.exec.runloop.queue_event(cb_true if value else cb_false)
+            themisexec.runloop.queue_event(cb_true if value else cb_false)

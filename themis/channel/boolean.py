@@ -1,10 +1,11 @@
 import typing
-import themis.exec
+
+import themisexec
 
 import themis.channel.event
 import themis.codegen
-import themis.util
 import themis.pygen
+import themis.util
 
 __all__ = ["BooleanOutput", "BooleanInput", "boolean_cell", "always_boolean"]
 
@@ -89,14 +90,14 @@ class BooleanInput:
         var_false = themis.pygen.Box(when_false._default_value)
 
         self._instant.set(condition, themis.pygen.Param)
-        self._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true, var_false)
+        self._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true, var_false)
 
         when_true._instant.set(var_true, themis.pygen.Param)
-        when_true._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true,
+        when_true._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true,
                                      var_false)
 
         when_false._instant.set(var_false, themis.pygen.Param)
-        when_false._instant.transform(themis.exec.filters.choose_float, cell_out.get_ref(), condition, var_true,
+        when_false._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true,
                                       var_false)
 
         return cell_in
@@ -118,7 +119,7 @@ class BooleanInput:
     @themis.util.memoize_field
     def inverted(self):
         instant = themis.pygen.Instant(bool)
-        self._instant.transform(themis.exec.filters.invert, instant, themis.pygen.Param)
+        self._instant.transform(themisexec.filters.invert, instant, themis.pygen.Param)
         return InvertedBooleanInput(instant, not self._default_value, base=self)
 
     def __and__(self, other):
@@ -135,7 +136,7 @@ class BooleanInput:
 
             for value, input in zip((value_self, value_other), (self, other)):
                 input._instant.set(value, themis.pygen.Param)
-                input._instant.transform(themis.exec.filters.and_bool, cell_out.get_ref(), value_self, value_other)
+                input._instant.transform(themisexec.filters.and_bool, cell_out.get_ref(), value_self, value_other)
             return cell_in
         else:
             return NotImplemented
@@ -182,7 +183,7 @@ class BooleanIO:
         self.input._instant.set(last_value, themis.pygen.Param)
 
         instant = themis.pygen.Instant(None)
-        instant.transform(themis.exec.filters.invert, self.output.get_ref(), last_value)
+        instant.transform(themisexec.filters.invert, self.output.get_ref(), last_value)
         return themis.channel.event.EventOutput(instant)
 
 

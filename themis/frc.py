@@ -1,10 +1,11 @@
 import typing
 
+import themisexec
+
 import themis.auto
 import themis.channel
 import themis.codegen
 import themis.codehelpers
-import themis.exec
 import themis.joystick
 import themis.pwm
 import themis.timers
@@ -39,14 +40,14 @@ class GPIO:
     OUTPUT = 2
 
     def __init__(self):
-        self._gpio_assignments = [GPIO.UNASSIGNED] * themis.exec.frc.GPIO_NUM
+        self._gpio_assignments = [GPIO.UNASSIGNED] * themisexec.frc.GPIO_NUM
         self._next_interrupt = 0
         self._poll_event = themis.timers.ticker(millis=20)
 
     def _alloc_interrupt(self) -> int:
-        if self._next_interrupt >= themis.exec.frc.INTERRUPT_NUM:
+        if self._next_interrupt >= themisexec.frc.INTERRUPT_NUM:
             raise Exception("Too many interrupts allocated - can only allocate %d GPIO inputs with interrupts" %
-                            themis.exec.frc.INTERRUPT_NUM)
+                            themisexec.frc.INTERRUPT_NUM)
         last = self._next_interrupt
         self._next_interrupt += 1
         return last
@@ -56,21 +57,21 @@ class GPIO:
         self._gpio_assignments[gpio_pin] = GPIO.INPUT
         if interrupt:
             interrupt_id = self._alloc_interrupt()
-            themis.codegen.add_init_call(themis.exec.frc.gpio_init_input_interrupt,
+            themis.codegen.add_init_call(themisexec.frc.gpio_init_input_interrupt,
                                          themis.codegen.InitPhase.PHASE_INIT_IO, gpio_pin, interrupt_id)
             bool_out, bool_in = themis.channel.boolean_cell(False)  # TODO: default value
-            themis.codegen.add_init_call(themis.exec.frc.gpio_start_interrupt, themis.codegen.InitPhase.PHASE_BEGIN,
+            themis.codegen.add_init_call(themisexec.frc.gpio_start_interrupt, themis.codegen.InitPhase.PHASE_BEGIN,
                                          gpio_pin, interrupt_id, bool_out)
             return bool_in
         else:
-            themis.codegen.add_init_call(themis.exec.frc.gpio_init_input_poll,
+            themis.codegen.add_init_call(themisexec.frc.gpio_init_input_poll,
                                          themis.codegen.InitPhase.PHASE_INIT_IO, gpio_pin)
-            return themis.codehelpers.poll_boolean(self._poll_event, themis.exec.frc.gpio_poll_input, args=(gpio_pin,))
+            return themis.codehelpers.poll_boolean(self._poll_event, themisexec.frc.gpio_poll_input, args=(gpio_pin,))
 
 
 class PWM:
     def __init__(self):
-        themis.codegen.add_init_call(themis.exec.frc.pwm_init_config, themis.codegen.InitPhase.PHASE_INIT_IO)
+        themis.codegen.add_init_call(themisexec.frc.pwm_init_config, themis.codegen.InitPhase.PHASE_INIT_IO)
 
     def talon_sr(self, pwm_id: int) -> themis.channel.FloatOutput:
         return self.pwm_controller(pwm_id, themis.pwm.TALON_SR)
@@ -101,11 +102,11 @@ class PWM:
         return themis.pwm.filter_to(specs, self.pwm_raw(pwm_id, specs.frequency_hz, latch_pwm_zero=latch_pwm_zero))
 
     def pwm_raw(self, pwm_id: int, frequency: float, latch_pwm_zero: bool = False) -> themis.channel.FloatOutput:
-        assert 0 <= pwm_id < themis.exec.frc.PWM_NUM
-        squelch = themis.exec.frc.pwm_frequency_to_squelch(frequency)
-        themis.codegen.add_init_call(themis.exec.frc.pwm_init, themis.codegen.InitPhase.PHASE_INIT_IO, pwm_id, squelch,
+        assert 0 <= pwm_id < themisexec.frc.PWM_NUM
+        squelch = themisexec.frc.pwm_frequency_to_squelch(frequency)
+        themis.codegen.add_init_call(themisexec.frc.pwm_init, themis.codegen.InitPhase.PHASE_INIT_IO, pwm_id, squelch,
                                      latch_pwm_zero)
-        return themis.codehelpers.push_float(themis.exec.frc.pwm_update, extra_args=(pwm_id,))
+        return themis.codehelpers.push_float(themisexec.frc.pwm_update, extra_args=(pwm_id,))
 
 
 class CAN:  # TODO: implement!
@@ -116,26 +117,26 @@ class CAN:  # TODO: implement!
 
 class PCM:
     def __init__(self, pcm_id):
-        assert 0 <= pcm_id < themis.exec.frc.PCM_NUM
+        assert 0 <= pcm_id < themisexec.frc.PCM_NUM
         self._id = pcm_id
 
     def solenoid(self, solenoid_id):
-        assert 0 <= solenoid_id < themis.exec.frc.SOLENOID_NUM
-        themis.codegen.add_init_call(themis.exec.frc.solenoid_init, themis.codegen.InitPhase.PHASE_INIT_IO, self._id,
+        assert 0 <= solenoid_id < themisexec.frc.SOLENOID_NUM
+        themis.codegen.add_init_call(themisexec.frc.solenoid_init, themis.codegen.InitPhase.PHASE_INIT_IO, self._id,
                                      solenoid_id)
-        return themis.codehelpers.push_boolean(themis.exec.frc.solenoid_update, extra_args=(self._id, solenoid_id))
+        return themis.codehelpers.push_boolean(themisexec.frc.solenoid_update, extra_args=(self._id, solenoid_id))
 
 
 class DriverStation:
     def __init__(self):
         update_out, self._update = themis.channel.event_cell()
-        themis.codegen.add_init_call(themis.exec.frc.ds_begin, themis.codegen.InitPhase.PHASE_BEGIN, update_out)
-        self.joysticks = [Joystick(i, self._update) for i in range(themis.exec.frc.JOYSTICK_NUM)]
+        themis.codegen.add_init_call(themisexec.frc.ds_begin, themis.codegen.InitPhase.PHASE_BEGIN, update_out)
+        self.joysticks = [Joystick(i, self._update) for i in range(themisexec.frc.JOYSTICK_NUM)]
         self._get_mode = None
 
     def get_mode(self) -> themis.channel.DiscreteInput:
         if self._get_mode is None:
-            self._get_mode = themis.codehelpers.poll_discrete(self._update, themis.exec.frc.get_robot_mode, (),
+            self._get_mode = themis.codehelpers.poll_discrete(self._update, themisexec.frc.get_robot_mode, (),
                                                               Mode.DISABLED, Mode)
         return self._get_mode
 
@@ -147,15 +148,15 @@ class Joystick(themis.joystick.Joystick):
     def __init__(self, i: int, event_update_joysticks):
         self._index = i
         self._update = event_update_joysticks
-        self._axes = [None] * themis.exec.frc.AXIS_NUM
-        self._buttons = [None] * themis.exec.frc.MAX_BUTTON_NUM
+        self._axes = [None] * themisexec.frc.AXIS_NUM
+        self._buttons = [None] * themisexec.frc.MAX_BUTTON_NUM
 
     def _make_axis(self, i) -> themis.channel.FloatInput:
-        return themis.codehelpers.poll_float(self._update, themis.exec.frc.get_joystick_axis,
+        return themis.codehelpers.poll_float(self._update, themisexec.frc.get_joystick_axis,
                                              (self._index, i), 0)
 
     def _make_button(self, i) -> themis.channel.BooleanInput:
-        return themis.codehelpers.poll_boolean(self._update, themis.exec.frc.get_joystick_button,
+        return themis.codehelpers.poll_boolean(self._update, themisexec.frc.get_joystick_button,
                                                (self._index, i), False)
 
     def axis(self, axis_num) -> themis.channel.FloatInput:

@@ -1,12 +1,13 @@
+import themisexec.timers
+
 import themis.channel.event
-import themis.pygen
-import themis.exec.timers
 import themis.codegen
+import themis.pygen
 
 
 def tick(millis: int, event: themis.channel.event.EventOutput) -> None:
     assert millis > 0
-    themis.codegen.add_init_call(themis.exec.timers.start_timer, themis.codegen.InitPhase.PHASE_BEGIN, millis, event)
+    themis.codegen.add_init_call(themisexec.timers.start_timer, themis.codegen.InitPhase.PHASE_BEGIN, millis, event)
 
 
 def ticker(millis: int, isolated=False) -> themis.channel.event.EventInput:
@@ -22,7 +23,7 @@ def ticker(millis: int, isolated=False) -> themis.channel.event.EventInput:
 
 
 def _gen_proc_thread():
-    themis.codegen.add_init_call(themis.exec.timers.start_proc_thread, themis.codegen.InitPhase.PHASE_BEGIN)
+    themis.codegen.add_init_call(themisexec.timers.start_proc_thread, themis.codegen.InitPhase.PHASE_BEGIN)
 
 
 def _ensure_proc_thread():
@@ -35,7 +36,7 @@ def delay_ms(out: themis.channel.event.EventOutput, milliseconds: (int, float)) 
     seconds = milliseconds / 1000.0
 
     instant = themis.pygen.Instant(None)
-    instant.transform(themis.exec.timers.run_after, None, seconds, out.get_ref())
+    instant.transform(themisexec.timers.run_after, None, seconds, out.get_ref())
     return themis.channel.EventOutput(instant)
 
 

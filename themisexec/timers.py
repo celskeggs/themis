@@ -1,8 +1,9 @@
-import threading
-import typing
-import time
-import themis.exec.runloop
 import heapq
+import threading
+import time
+import typing
+
+import themisexec.runloop
 
 
 def start_timer(millis: int, callback: typing.Callable[[], None]) -> None:
@@ -14,7 +15,7 @@ def timer_thread_body(seconds: float, callback) -> None:
     while True:
         # TODO: don't queue if the last event hasn't been processed yet?
         time.sleep(seconds)
-        themis.exec.runloop.queue_event(callback)
+        themisexec.runloop.queue_event(callback)
 
 
 _queue_cond = threading.Condition()
@@ -35,7 +36,7 @@ def proc_thread_body() -> None:
                 _queue_cond.wait(time.time() - _queue[0][0])
             target_time, callback = heapq.heappop(_queue)
             assert target_time <= time.time()
-        themis.exec.runloop.queue_event(callback)
+        themisexec.runloop.queue_event(callback)
 
 
 def run_after(seconds: float, callback: typing.Callable[[], None]) -> None:

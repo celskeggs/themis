@@ -1,11 +1,12 @@
+import themisexec.optimization_info
+
 import themis.pygen.templates
-import themis.exec.optimization_info
 
 _opt_passes = []
 
 wildcard = object()
 CALLBACK_ELIM = ["%s.%s" % (cb.__module__, cb.__name__) for cb in
-                 themis.exec.optimization_info.CAN_ELIMINATE_ON_REMOVED_CALLBACK]
+                 themisexec.optimization_info.CAN_ELIMINATE_ON_REMOVED_CALLBACK]
 
 
 def tree_match(tree, template):
@@ -109,7 +110,7 @@ def opt_eliminate_empty(root_instant, instants: set):
 
     # === ELIMINATE INDIRECT USES ===
     def get_do_nothing():
-        do_nothing = themis.exec.filters.do_nothing
+        do_nothing = themisexec.filters.do_nothing
         root_instant._referenced_modules.add(do_nothing.__module__)  # TODO: do this better
         return "%s.%s" % (do_nothing.__module__, do_nothing.__name__)
 

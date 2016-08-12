@@ -1,7 +1,9 @@
-import themis.pygen
-import themis.exec.runloop
-import themis.util
 import enum
+
+import themisexec.runloop
+
+import themis.pygen
+import themis.util
 
 
 class InitPhase(enum.Enum):
@@ -16,7 +18,7 @@ class GenerationContext:
     def __init__(self):
         self._root_init = themis.pygen.Instant(None)
         self._initialize = themis.pygen.Instant(None)
-        self._root_init.transform(themis.exec.runloop.enter_loop, None, self._initialize)
+        self._root_init.transform(themisexec.runloop.enter_loop, None, self._initialize)
         self._init_phases = {}
         for phase in InitPhase:
             inst = themis.pygen.Instant(None)

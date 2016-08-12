@@ -1,8 +1,9 @@
 import typing
 
-import themis.pygen
+import themisexec
+
 import themis.codegen
-import themis.exec
+import themis.pygen
 
 __all__ = ["FloatOutput", "FloatInput", "float_cell", "always_float"]
 
@@ -40,7 +41,7 @@ class FloatOutput:
         update_target.set(ramp_target, themis.pygen.Param)
 
         update_ramping = themis.pygen.Instant(float)
-        ticker.get_instant().transform(themis.exec.filters.ramping_update, update_ramping, ramp_current, ramp_target,
+        ticker.get_instant().transform(themisexec.filters.ramping_update, update_ramping, ramp_current, ramp_target,
                                        max_change_per_update)
         update_ramping.set(ramp_current, themis.pygen.Param)
         update_ramping.invoke(self.get_ref(), themis.pygen.Param)
@@ -74,7 +75,7 @@ class FloatOutput:
             return NotImplemented
 
     def __neg__(self) -> "FloatOutput":
-        return self.filter(themis.exec.filters.negate)
+        return self.filter(themisexec.filters.negate)
 
     def set_event(self, value: float) -> "themis.channel.event.EventOutput":
         assert isinstance(value, (int, float))
@@ -119,7 +120,7 @@ class FloatInput:
         return cell_in
 
     def deadzone(self, zone: float) -> "FloatInput":
-        return self.filter(themis.exec.filters.deadzone, (), (zone,))
+        return self.filter(themisexec.filters.deadzone, (), (zone,))
 
     # note: different ramping scale than the CCRE
     def with_ramping(self, change_per_second: float, update_rate_ms=None) -> "FloatInput":
@@ -144,31 +145,31 @@ class FloatInput:
             return NotImplemented
 
     def __add__(self, other):
-        return self._arith_op(themis.exec.filters.add, other, False)
+        return self._arith_op(themisexec.filters.add, other, False)
 
     def __radd__(self, other):
-        return self._arith_op(themis.exec.filters.add, other, True)
+        return self._arith_op(themisexec.filters.add, other, True)
 
     def __sub__(self, other):
-        return self._arith_op(themis.exec.filters.subtract, other, False)
+        return self._arith_op(themisexec.filters.subtract, other, False)
 
     def __rsub__(self, other):
-        return self._arith_op(themis.exec.filters.subtract, other, True)
+        return self._arith_op(themisexec.filters.subtract, other, True)
 
     def __mul__(self, other):
-        return self._arith_op(themis.exec.filters.multiply, other, False)
+        return self._arith_op(themisexec.filters.multiply, other, False)
 
     def __rmul__(self, other):
-        return self._arith_op(themis.exec.filters.multiply, other, True)
+        return self._arith_op(themisexec.filters.multiply, other, True)
 
     def __truediv__(self, other):
-        return self._arith_op(themis.exec.filters.divide, other, False)
+        return self._arith_op(themisexec.filters.divide, other, False)
 
     def __rtruediv__(self, other):
-        return self._arith_op(themis.exec.filters.divide, other, True)
+        return self._arith_op(themisexec.filters.divide, other, True)
 
     def __neg__(self):
-        return self.filter(themis.exec.filters.negate)
+        return self.filter(themisexec.filters.negate)
 
 
 def float_cell(default_value) -> typing.Tuple[FloatOutput, FloatInput]:
