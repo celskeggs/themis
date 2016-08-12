@@ -2,6 +2,7 @@ import typing
 
 import themis.pygen.annot
 import themis.pygen.counter
+import themis.pygen.templates
 
 PARAM_TYPES = {None: "None", bool: "bool", int: "int", float: "float"}
 
@@ -30,7 +31,7 @@ class Instant:
             self._param = uid.nstr("param%d")
         self._uid = uid.next()
         self._instant = "instant%d" % self._uid
-        self._calls = []
+        self._body = []
         self._referenced_modules = set()
         self._referenced_boxes = set()
         self._referenced_instants = set()
@@ -69,15 +70,15 @@ class Instant:
         inst._refcount += 1
         if arg is None:
             assert inst._param_type is None
-            self._calls.append("%s()" % (inst._instant,))
+            self._body.append((templates.invoke_nullary, inst))
         else:
             param_value = self._validate_gen(arg, inst._param_type)
-            self._calls.append("%s(%s)" % (inst._instant, param_value))
+            self._body.append((templates.invoke_unary, inst, param_value))
 
     def set(self, box: Box, arg):
         assert isinstance(box, Box)
         param_value = self._validate_gen(arg, box._box_type)
-        self._calls.append("%s = %s" % (box._box, param_value))
+        self._body.append((templates.set, box, param_value))
 
     def if_equal(self, comp_a, comp_b, target: "Instant", arg=None):
         assert isinstance(target, Instant)
@@ -88,12 +89,13 @@ class Instant:
 
         if target._param_type is None:
             assert arg is None
-            arg_value = ""
+            invocation = (templates.invoke_nullary, target)
         else:
             arg_value = self._validate_gen(arg, target._param_type)
+            invocation = (templates.invoke_unary, target, arg_value)
 
-        self._calls.append("if %s == %s:" % (gen_a, gen_b))
-        self._calls.append("\t%s(%s)" % (target._instant, arg_value))
+        self._body.append((templates.if_then, (templates.equals, gen_a, gen_b),
+                           invocation))
 
     def if_unequal(self, comp_a, comp_b, target: "Instant", arg=None):
         assert isinstance(target, Instant)
@@ -104,12 +106,13 @@ class Instant:
 
         if target._param_type is None:
             assert arg is None
-            arg_value = ""
+            invocation = (templates.invoke_nullary, target)
         else:
             arg_value = self._validate_gen(arg, target._param_type)
+            invocation = (templates.invoke_unary, target, arg_value)
 
-        self._calls.append("if %s != %s:" % (gen_a, gen_b))
-        self._calls.append("\t%s(%s)" % (target._instant, arg_value))
+        self._body.append((templates.if_then, (templates.not_equals, gen_a, gen_b),
+                           invocation))
 
     def if_else(self, comp_a, comp_b, when_true: "Instant", when_false: "Instant", arg_true=None, arg_false=None):
         assert isinstance(when_true, Instant)
@@ -123,20 +126,18 @@ class Instant:
 
         if when_true._param_type is None:
             assert arg_true is None
-            arg_value_true = ""
+            call_true = (templates.invoke_nullary, when_true)
         else:
-            arg_value_true = self._validate_gen(arg_true, when_true._param_type)
+            call_true = (templates.invoke_unary, when_true, self._validate_gen(arg_true, when_true._param_type))
 
         if when_false._param_type is None:
             assert arg_false is None
-            arg_value_false = ""
+            call_false = (templates.invoke_nullary, when_false)
         else:
-            arg_value_false = self._validate_gen(arg_false, when_false._param_type)
+            call_false = (templates.invoke_unary, when_false, self._validate_gen(arg_false, when_false._param_type))
 
-        self._calls.append("if %s == %s:" % (gen_a, gen_b))
-        self._calls.append("\t%s(%s)" % (when_true._instant, arg_value_true))
-        self._calls.append("else:")
-        self._calls.append("\t%s(%s)" % (when_false._instant, arg_value_false))
+        self._body.append((templates.if_else, (templates.equals, gen_a, gen_b),
+                           call_true, call_false))
 
     def transform(self, filter_ref, instant_target: typing.Optional["Instant"], *args):
         if instant_target is not None:
@@ -151,25 +152,26 @@ class Instant:
         assert len(arg_types) == len(args), "Argument length mismatch on %s" % filter_ref
         arg_values = [self._validate_gen(arg, param_type) for arg, param_type in zip(args, arg_types)]
 
-        invocation = "%s.%s(%s)" % (mod, name, ", ".join(arg_values))
+        invocation = (templates.invoke_poly, "%s.%s" % (mod, name), arg_values)
         if instant_target is None:
             assert return_type is None
-            self._calls.append(invocation)
         else:
             assert return_type is not None
             assert return_type is instant_target._param_type
-            self._calls.append("%s(%s)" % (instant_target._instant, invocation))
+            invocation = (templates.invoke_unary, instant_target, invocation)
+        self._body.append(invocation)
 
     def _generate(self):
         if self._param_type is None:
             yield "def %s() -> None:" % (self._instant,)
         else:
             yield "def %s(%s: %s) -> None:" % (self._instant, self._param, PARAM_TYPES[self._param_type])
-        if self._calls:
+        if self._body:
             if self._referenced_boxes:
                 yield "\tglobal %s" % ", ".join(box._box for box in self._referenced_boxes)
-            for call in self._calls:
-                yield "\t%s" % (call,)
+            for chunk in self._body:
+                for line in templates.apply(chunk).split("\n"):
+                    yield "\t%s" % (line,)
         else:
             yield "\tpass"
 
