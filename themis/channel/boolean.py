@@ -57,7 +57,7 @@ class BooleanInput:
         raise TypeError("Cannot convert IO channels to bool")
 
     def filter(self, filter_func, pre_args=(), post_args=()) -> "BooleanInput":
-        cell_out, cell_in = boolean_cell(False)  # TODO: default value
+        cell_out, cell_in = boolean_cell(filter_func(*pre_args, self._default_value, *post_args))
         self.send(cell_out.filter(filter_func=filter_func, pre_args=pre_args, post_args=post_args))
         return cell_in
 
