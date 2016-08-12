@@ -98,7 +98,7 @@ class FloatInput:
         assert instant.is_param_type(float)
         assert isinstance(default_value, (int, float))
         self._instant = instant
-        self._default_value = default_value
+        self._default_value = float(default_value)
 
     def send(self, output: FloatOutput) -> None:
         assert isinstance(output, FloatOutput)
@@ -145,6 +145,7 @@ class FloatInput:
 
     def _arith_op(self, op, other, reverse):
         if isinstance(other, (int, float)):
+            other = float(other)
             if reverse:
                 return self.filter(op, other)
             else:
