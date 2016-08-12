@@ -36,7 +36,6 @@ class Instant:
         self._instant = "instant%d" % self._uid
         self._body = []
         self._referenced_modules = set()
-        self._referenced_boxes = set()
         self._referenced_instants = set()
 
     def is_param_type(self, type_ref):
@@ -50,7 +49,6 @@ class Instant:
         if arg is Param:
             return self._param_type, self._param
         elif isinstance(arg, Box):
-            self._referenced_boxes.add(arg)
             return arg._box_type, arg._box
         elif type(arg) in PARAM_TYPES:
             return type(arg), repr(arg)
@@ -159,14 +157,27 @@ class Instant:
             invocation = (templates.invoke_unary, instant_target, invocation)
         self._body.append(invocation)
 
+    def _walk_refed_boxes(self, tree, out: set) -> None:
+        if type(tree) in (list, tuple):
+            for subtree in tree:
+                self._walk_refed_boxes(subtree, out)
+        elif isinstance(tree, Box):
+            out.add(tree)
+
+    def get_referenced_boxes(self) -> set:
+        sum_set = set()
+        self._walk_refed_boxes(self._body, sum_set)
+        return sum_set
+
     def _generate(self):
         if self._param_type is None:
             yield "def %s() -> None:" % (self._instant,)
         else:
             yield "def %s(%s: %s) -> None:" % (self._instant, self._param, PARAM_TYPES[self._param_type])
         if self._body:
-            if self._referenced_boxes:
-                yield "\tglobal %s" % ", ".join(box._box for box in self._referenced_boxes)
+            boxes = self.get_referenced_boxes()
+            if boxes:
+                yield "\tglobal %s" % ", ".join(box._box for box in boxes)
             for chunk in self._body:
                 for line in templates.apply(chunk).split("\n"):
                     yield "\t%s" % (line,)
@@ -189,17 +200,14 @@ def _enumerate_instants(root_instant: Instant) -> typing.Set[Instant]:
 def generate_code(root_instant: Instant):
     assert root_instant.is_param_type(None)
 
-    # find all involved instants
+    # find all involved instants, imports, and boxes
     instants = _enumerate_instants(root_instant)
-
-    # find import references first, before the optimizer can mess them up
     modules = set().union(*(instant._referenced_modules for instant in instants))
 
-    # optimize the setup
+    # optimize the setup - after we find everything, to avoid losing reference info
     root_instant, instants = optimizer.optimize(root_instant, instants)
 
-    # find all involved boxes
-    boxes = set().union(*(instant._referenced_boxes for instant in instants))
+    boxes = set().union(*(instant.get_referenced_boxes() for instant in instants))
 
     # generate code
     out = ["import %s" % (module,) for module in modules]
