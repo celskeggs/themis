@@ -47,6 +47,33 @@ def replace_in_instants(instants, template_list, substitutor, replace_before=Fal
         instant._body = tree_replace_all(instant._body, template_list, substitutor, replace_before)
 
 
+def tree_walk(tree, walker):
+    has_changed = False
+    if type(tree) == list or type(tree) == tuple:
+        out = None
+        for i in range(len(tree)):
+            change, value = tree_walk(tree[i], walker)
+            if change:
+                if out is None:
+                    out = tree[:]
+                out[i] = value
+        has_changed = out is not None
+        if has_changed:
+            tree = tuple(out) if type(tree) == tuple else out
+    change, value = walker(tree)
+    if change:
+        return True, value
+    else:
+        return has_changed, tree
+
+
+def replace_walk_in_instants(instants, walker):
+    for instant in instants:
+        update, value = tree_walk(instant._body, walker)
+        if update:
+            instant._body = value
+
+
 def opt_pass(op):
     _opt_passes.append(op)
 
@@ -99,8 +126,19 @@ def opt_eliminate_empty(root_instant, instants: set):
     template_list = [(themis.pygen.templates.invoke_poly, wildcard, wildcard)]
     for instant in to_remove:
         template_list += [(themis.pygen.templates.invoke_unary, wildcard, instant)]
-    replace_in_instants(instants, template_list, substitutor_2)
+    replace_in_instants(instants, template_list, substitutor_2, replace_before=True)
 
+    return root_instant, instants
+
+
+@opt_pass
+def opt_eliminate_nops(root_instant, instants):
+    def walker(tree):
+        if type(tree) == list and (themis.pygen.templates.nop,) in tree:
+            return True, [elem for elem in tree if elem != (themis.pygen.templates.nop,)]
+        return False, None
+
+    replace_walk_in_instants(instants, walker)
     return root_instant, instants
 
 
