@@ -44,3 +44,7 @@ def equals(a, b) -> str:
 
 def not_equals(a, b) -> str:
     return "%s != %s" % (a, b)
+
+
+def nop() -> str:
+    return "pass"

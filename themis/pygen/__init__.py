@@ -2,6 +2,7 @@ import typing
 
 import themis.pygen.annot
 import themis.pygen.counter
+import themis.pygen.optimizer
 import themis.pygen.templates
 
 PARAM_TYPES = {None: "None", bool: "bool", int: "int", float: "float"}
@@ -9,6 +10,9 @@ PARAM_TYPES = {None: "None", bool: "bool", int: "int", float: "float"}
 uid = counter.Counter()
 
 Param = object()
+
+
+__all__ = ["Box", "Instant", "generate_code", "Param"]
 
 
 class Box:
@@ -40,6 +44,9 @@ class Instant:
     def is_param_type(self, type_ref):
         return self._param_type == type_ref
 
+    def is_empty(self):
+        return not self._body
+
     def _validate_type(self, arg) -> typing.Tuple[typing.Type, str]:
         assert arg is not None
         if arg is Param:
@@ -54,7 +61,7 @@ class Instant:
         if isinstance(arg, Instant):
             self._referenced_instants.add(arg)
             arg._refcount += 1
-            return typing.Callable[[] if arg._param_type is None else [arg._param_type], None], arg._instant
+            return typing.Callable[[] if arg._param_type is None else [arg._param_type], None], arg
         else:
             assert False, "Invalid parameter (bad type): %s" % (arg,)
 
@@ -192,6 +199,7 @@ def generate_code(root_instant: Instant):
     assert root_instant.is_param_type(None)
     root_instant._refcount += 1
     instants = _enumerate_instants(root_instant)
+    root_instant, instants = optimizer.optimize(root_instant, instants)
     modules = set().union(*(instant._referenced_modules for instant in instants))
     boxes = set().union(*(instant._referenced_boxes for instant in instants))
     out = ["import %s" % (module,) for module in modules]

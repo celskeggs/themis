@@ -1,6 +1,10 @@
 import math
 
 
+def do_nothing(arg=None) -> None:
+    pass
+
+
 def deadzone(value: float, zone: float) -> float:
     return value if abs(value) >= zone else 0.0
 
