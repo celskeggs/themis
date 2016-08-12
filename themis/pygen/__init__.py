@@ -197,5 +197,5 @@ def generate_code(root_instant: Instant):
     out += [box._generate() for box in boxes]
     for instant in sorted(instants, key=lambda instant: instant._uid):
         out += instant._generate()
-    out += ["def run() -> None:", "\t%s()" % root_instant._instant]
+    out += ["%s()" % root_instant._instant]
     return "\n".join(out)
