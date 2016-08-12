@@ -142,6 +142,33 @@ def opt_eliminate_nops(root_instant, instants):
     return root_instant, instants
 
 
+def check_get_simple_call(instant):
+    if len(instant._body) == 1 and instant._body[0][0] == themis.pygen.templates.invoke_unary and isinstance(
+            instant._body[0][1], themis.pygen.Instant) and instant._body[0][2] == instant._param:
+        return instant._body[0][1]
+
+
+@opt_pass
+def opt_inline_simple(root_instant, instants: set):
+    remaps = {}
+    for instant in instants:
+        simple_target = check_get_simple_call(instant)
+        if simple_target is not None:
+            remaps[instant] = simple_target
+    # === ELIMINATE REMAPPED INSTANTS FROM INSTANT LIST ===
+    instants.difference_update(remaps.keys())
+
+    # === REMAP USES OF REMOVED INSTANTS ===
+    def substitutor(tree):
+        assert tree in remaps
+        while tree in remaps:  # TODO: notice infinite loops
+            tree = remaps[tree]
+        return tree
+
+    replace_in_instants(instants, [instant for instant in remaps.keys()], substitutor, replace_before=True)
+    return root_instant, instants
+
+
 def optimize(root_instant, instants):
     for op in _opt_passes:
         root_instant, instants = op(root_instant, instants)
