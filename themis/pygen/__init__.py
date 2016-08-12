@@ -133,8 +133,10 @@ class Instant:
         else:
             call_false = (templates.invoke_unary, when_false, self._validate_gen(arg_false, when_false._param_type))
 
-        self._body.append((templates.if_else, (templates.equals, gen_a, gen_b),
-                           call_true, call_false))
+        if gen_b == "True":
+            self._body.append((templates.if_else, gen_a, call_true, call_false))
+        else:
+            self._body.append((templates.if_else, (templates.equals, gen_a, gen_b), call_true, call_false))
 
     def transform(self, filter_ref, instant_target: typing.Optional["Instant"], *args):
         if instant_target is not None:
