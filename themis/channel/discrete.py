@@ -44,11 +44,9 @@ class DiscreteOutput:
         if value not in self._sets:
             value_int = self.discrete_type.numeric(value)
 
-            @themis.channel.event.event_build
-            def update(ref: str):
-                yield "%s(%s)" % (self.get_discrete_ref(), value_int)
-
-            self._sets[value] = update
+            instant = themis.pygen.Instant(None)
+            instant.invoke(self.get_ref(), value_int)
+            self._sets[value] = themis.channel.event.EventOutput(instant)
         return self._sets[value]
 
 
