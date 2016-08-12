@@ -56,11 +56,6 @@ class BooleanInput:
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
-    def filter(self, filter_func, pre_args=(), post_args=()) -> "BooleanInput":
-        cell_out, cell_in = boolean_cell(filter_func(*pre_args, self._default_value, *post_args))
-        self.send(cell_out.filter(filter_func=filter_func, pre_args=pre_args, post_args=post_args))
-        return cell_in
-
     @themis.util.memoize_field
     def _press_and_release(self) -> "typing.Tuple[themis.channel.event.EventInput, themis.channel.event.EventInput]":
         become_true = themis.pygen.Instant(None)
@@ -132,7 +127,9 @@ class BooleanInput:
     @property
     @themis.util.memoize_field
     def inverted(self):
-        return self.filter(themis.exec.filters.invert)
+        instant = themis.pygen.Instant(bool)
+        self._instant.transform(themis.exec.filters.invert, instant, themis.pygen.Param)
+        return InvertedBooleanInput(instant, not self._default_value, base=self)
 
     def __and__(self, other):
         if isinstance(other, bool):
@@ -162,6 +159,20 @@ class BooleanInput:
         else:
             assert not isinstance(other, BooleanInput), "should have dispatched to __and__"
             return NotImplemented
+
+
+class InvertedBooleanInput(BooleanInput):
+    def __init__(self, instant: themis.pygen.Instant, default_value: bool, base: BooleanInput):
+        super().__init__(instant, default_value)
+        self._base = base
+
+    @themis.util.memoize_field
+    def _press_and_release(self) -> "typing.Tuple[themis.channel.event.EventInput, themis.channel.event.EventInput]":
+        become_true, become_false = self._base._press_and_release()
+        return become_false, become_true  # flip them!
+
+    def inverted(self):
+        return self._base
 
 
 class BooleanIO:
