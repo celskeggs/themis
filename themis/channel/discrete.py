@@ -1,6 +1,7 @@
 import string
 import typing
 
+import themis.exec.filters
 import themis.channel.event
 import themis.codegen
 import themis.pygen
@@ -71,8 +72,7 @@ class DiscreteInput:
     def is_value(self, value: str) -> "themis.channel.boolean.BooleanInput":
         value_int = self.discrete_type.numeric(value)
         instant = themis.pygen.Instant(bool)
-        # TODO: optimize to expression, maybe?
-        self._instant.if_else(themis.pygen.Param, value_int, instant, instant, True, False)
+        self._instant.transform(themis.exec.filters.equals, instant, themis.pygen.Param, value_int)
         return themis.channel.boolean.BooleanInput(instant, self._default_value == value_int)
 
 

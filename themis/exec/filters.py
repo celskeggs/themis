@@ -42,6 +42,10 @@ def and_bool(a: bool, b: bool) -> bool:
     return a and b
 
 
+def equals(a: int, b: int) -> bool:
+    return a == b
+
+
 def operator(cached_inputs, output, operator, arguments):
     output(operator(*cached_inputs, *arguments))
 
