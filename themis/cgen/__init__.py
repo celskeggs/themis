@@ -1,17 +1,27 @@
 import typing
 
-import themis.pygen.annot
-import themis.pygen.counter
-import themis.pygen.optimizer
-import themis.pygen.templates
+import themis.cgen.counter
+import themis.cgen.optimizer
+import themis.cgen.templates
 
-PARAM_TYPES = {None: "None", bool: "bool", int: "int", float: "float"}
+PARAM_TYPES = {None: "None", bool: "bool", int: "int", float: "double"}
 
 uid = counter.Counter()
 
 Param = object()
 
 __all__ = ["Box", "Instant", "generate_code", "Param"]
+
+
+def encode_value(x):
+    if type(x) == bool:
+        return "true" if x else "false"
+    elif type(x) == int:
+        return str(x)
+    elif type(x) == float:
+        return str(x)
+    else:
+        assert False
 
 
 class Box:
@@ -23,7 +33,7 @@ class Box:
         self._box = uid.nstr("box%d")
 
     def _generate(self) -> str:
-        return "%s = %s" % (self._box, repr(self._value))
+        return "static %s %s = %s;" % (PARAM_TYPES[self._box_type], self._box, encode_value(self._value))
 
 
 class Instant:
@@ -35,7 +45,6 @@ class Instant:
         self._uid = uid.next()
         self._instant = "instant%d" % self._uid
         self._body = []
-        self._referenced_modules = set()
         self._referenced_instants = set()
 
     def is_param_type(self, type_ref):
@@ -51,7 +60,7 @@ class Instant:
         elif isinstance(arg, Box):
             return arg._box_type, arg
         elif type(arg) in PARAM_TYPES:
-            return type(arg), repr(arg)
+            return type(arg), encode_value(arg)
         elif hasattr(arg, "get_ref"):
             arg = arg.get_ref()
         if isinstance(arg, Instant):
@@ -59,6 +68,10 @@ class Instant:
             return typing.Callable[[] if arg._param_type is None else [arg._param_type], None], arg
         else:
             assert False, "Invalid parameter (bad type): %s" % (arg,)
+
+    def _encode_gen(self, arg) -> str:
+        arg_type, arg_value = self._validate_type(arg)
+        return arg_value
 
     def _validate_gen(self, arg, expected_type: typing.Type) -> str:
         arg_type, arg_value = self._validate_type(arg)
@@ -138,24 +151,27 @@ class Instant:
         else:
             self._body.append((templates.if_else, (templates.equals, gen_a, gen_b), call_true, call_false))
 
-    def transform(self, filter_ref, instant_target: typing.Optional["Instant"], *args):
+    def operator_transform(self, op: str, instant_target: "Instant", arg_left, arg_right):
+        assert type(op) == str
+        assert isinstance(instant_target, Instant)
+        self._referenced_instants.add(instant_target)
+
+        assert arg_left is not None or arg_right is not None
+
+        value_left, value_right = "" if arg_left is None else self._encode_gen(arg_left), "" if arg_right is None else self._encode_gen(arg_right)
+
+        self._body.append((templates.invoke_unary, instant_target, (templates.operator, value_left, op, value_right)))
+
+    def transform(self, filter_ref: str, instant_target: typing.Optional["Instant"], *args):
+        assert type(filter_ref) == str
         if instant_target is not None:
             assert isinstance(instant_target, Instant)
             self._referenced_instants.add(instant_target)
 
-        mod, name = themis.pygen.annot.get_global_ref(filter_ref)
-        self._referenced_modules.add(mod)
+        arg_values = [self._encode_gen(arg) for arg in args]
 
-        arg_types, return_type = themis.pygen.annot.get_types(filter_ref)
-        assert len(arg_types) == len(args), "Argument length mismatch on %s" % filter_ref
-        arg_values = [self._validate_gen(arg, param_type) for arg, param_type in zip(args, arg_types)]
-
-        invocation = (templates.invoke_poly, "%s.%s" % (mod, name), arg_values)
-        if instant_target is None:
-            assert return_type is None
-        else:
-            assert return_type is not None
-            assert return_type is instant_target._param_type
+        invocation = (templates.invoke_poly, filter_ref, arg_values)
+        if instant_target is not None:
             invocation = (templates.invoke_unary, instant_target, invocation)
         self._body.append(invocation)
 
@@ -171,20 +187,21 @@ class Instant:
         self._walk_refed_boxes(self._body, sum_set)
         return sum_set
 
+    def _generate_stub(self):
+        if self._param_type is None:
+            return "static void %s(void);" % (self._instant,)
+        else:
+            return "static void %s(%s %s);" % (self._instant, PARAM_TYPES[self._param_type], self._param)
+
     def _generate(self):
         if self._param_type is None:
-            yield "def %s() -> None:" % (self._instant,)
+            yield "static void %s(void) {" % (self._instant,)
         else:
-            yield "def %s(%s: %s) -> None:" % (self._instant, self._param, PARAM_TYPES[self._param_type])
-        if self._body:
-            boxes = self.get_referenced_boxes()
-            if boxes:
-                yield "\tglobal %s" % ", ".join(box._box for box in boxes)
-            for chunk in self._body:
-                for line in templates.apply(chunk).split("\n"):
-                    yield "\t%s" % (line,)
-        else:
-            yield "\tpass"
+            yield "static void %s(%s %s) {" % (self._instant, PARAM_TYPES[self._param_type], self._param)
+        for chunk in self._body:
+            for line in templates.apply(chunk).split("\n"):
+                yield "\t%s" % (line,)
+        yield "}"
 
 
 def _enumerate_instants(root_instant: Instant) -> typing.Set[Instant]:
@@ -204,7 +221,6 @@ def generate_code(root_instant: Instant):
 
     # find all involved instants, imports, and boxes
     instants = _enumerate_instants(root_instant)
-    modules = set().union(*(instant._referenced_modules for instant in instants))
 
     # optimize the setup - after we find everything, to avoid losing reference info
     root_instant, instants = optimizer.optimize(root_instant, instants)
@@ -212,10 +228,12 @@ def generate_code(root_instant: Instant):
     boxes = set().union(*(instant.get_referenced_boxes() for instant in instants))
 
     # generate code
-    out = ["import %s" % (module,) for module in modules]
+    out = ["#include \"themis.h\""]
     out += [box._generate() for box in boxes]
     for instant in sorted(instants, key=lambda instant: instant._uid):
+        out.append(instant._generate_stub())
+    for instant in sorted(instants, key=lambda instant: instant._uid):
         out += instant._generate()
-    out += ["%s()" % root_instant._instant]
+    out += ["int main() {\n\t%s();\n\tpanic(\"critical failure: root instant returned\");\n}" % root_instant._instant]
 
     return "\n".join(out)

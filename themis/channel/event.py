@@ -1,18 +1,18 @@
 import typing
 
-import themis.pygen
+import themis.cgen
 import themis.codegen
 
 __all__ = ["EventOutput", "EventInput", "event_cell"]
 
 
 class EventOutput:
-    def __init__(self, instant: themis.pygen.Instant):
-        assert isinstance(instant, themis.pygen.Instant)
+    def __init__(self, instant: themis.cgen.Instant):
+        assert isinstance(instant, themis.cgen.Instant)
         assert instant.is_param_type(None)
         self._instant = instant
 
-    def get_ref(self) -> themis.pygen.Instant:
+    def get_ref(self) -> themis.cgen.Instant:
         return self._instant
 
     def __bool__(self):
@@ -23,12 +23,12 @@ class EventOutput:
 
 
 class EventInput:
-    def __init__(self, instant: themis.pygen.Instant):
-        assert isinstance(instant, themis.pygen.Instant)
+    def __init__(self, instant: themis.cgen.Instant):
+        assert isinstance(instant, themis.cgen.Instant)
         assert instant.is_param_type(None)
         self._instant = instant
 
-    def get_instant(self) -> themis.pygen.Instant:
+    def get_instant(self) -> themis.cgen.Instant:
         return self._instant
 
     def send(self, output: EventOutput) -> None:
@@ -40,5 +40,5 @@ class EventInput:
 
 
 def event_cell() -> typing.Tuple[EventOutput, EventInput]:
-    instant = themis.pygen.Instant(None)
+    instant = themis.cgen.Instant(None)
     return EventOutput(instant), EventInput(instant)

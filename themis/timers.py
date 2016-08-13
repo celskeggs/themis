@@ -1,13 +1,12 @@
-import themisexec.timers
-
 import themis.channel.event
 import themis.codegen
-import themis.pygen
+import themis.cgen
 
 
 def tick(millis: int, event: themis.channel.event.EventOutput) -> None:
     assert millis > 0
-    themis.codegen.add_init_call(themisexec.timers.start_timer, themis.codegen.InitPhase.PHASE_BEGIN, millis, event)
+    nanos = millis * 1000000
+    themis.codegen.add_init_call("start_timer_ns", themis.codegen.InitPhase.PHASE_BEGIN, nanos, event)
 
 
 def ticker(millis: int, isolated=False) -> themis.channel.event.EventInput:
@@ -23,7 +22,7 @@ def ticker(millis: int, isolated=False) -> themis.channel.event.EventInput:
 
 
 def _gen_proc_thread():
-    themis.codegen.add_init_call(themisexec.timers.start_proc_thread, themis.codegen.InitPhase.PHASE_BEGIN)
+    themis.codegen.add_init_call("begin_timers", themis.codegen.InitPhase.PHASE_BEGIN)
 
 
 def _ensure_proc_thread():
@@ -33,10 +32,10 @@ def _ensure_proc_thread():
 def delay_ms(out: themis.channel.event.EventOutput, milliseconds: (int, float)) -> themis.channel.event.EventOutput:
     assert isinstance(milliseconds, (int, float))
     _ensure_proc_thread()
-    seconds = milliseconds / 1000.0
+    nanos = int(milliseconds * 1000000)
 
-    instant = themis.pygen.Instant(None)
-    instant.transform(themisexec.timers.run_after, None, seconds, out.get_ref())
+    instant = themis.cgen.Instant(None)
+    instant.transform("run_after_ns", None, nanos, out.get_ref())
     return themis.channel.EventOutput(instant)
 
 

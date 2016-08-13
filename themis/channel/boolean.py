@@ -1,49 +1,47 @@
 import typing
 
-import themisexec
-
 import themis.channel.event
 import themis.codegen
-import themis.pygen
+import themis.cgen
 import themis.util
 
 __all__ = ["BooleanOutput", "BooleanInput", "boolean_cell", "always_boolean"]
 
 
 class BooleanOutput:
-    def __init__(self, instant: themis.pygen.Instant):
-        assert isinstance(instant, themis.pygen.Instant)
+    def __init__(self, instant: themis.cgen.Instant):
+        assert isinstance(instant, themis.cgen.Instant)
         self._instant = instant
 
-    def get_ref(self) -> themis.pygen.Instant:
+    def get_ref(self) -> themis.cgen.Instant:
         return self._instant
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
     def filter(self, filter_func, pre_args=(), post_args=()) -> "BooleanOutput":
-        instant = themis.pygen.Instant(bool)
-        instant.transform(filter_func, self.get_ref(), *pre_args, themis.pygen.Param, *post_args)
+        instant = themis.cgen.Instant(bool)
+        instant.transform(filter_func, self.get_ref(), *pre_args, themis.cgen.Param, *post_args)
         return BooleanOutput(instant)
 
     @property
     @themis.util.memoize_field
     def set_true(self) -> "themis.channel.event.EventOutput":
-        instant = themis.pygen.Instant(None)
+        instant = themis.cgen.Instant(None)
         instant.invoke(self.get_ref(), True)
         return themis.channel.EventOutput(instant)
 
     @property
     @themis.util.memoize_field
     def set_false(self) -> "themis.channel.event.EventOutput":
-        instant = themis.pygen.Instant(None)
+        instant = themis.cgen.Instant(None)
         instant.invoke(self.get_ref(), True)
         return themis.channel.EventOutput(instant)
 
 
 class BooleanInput:
-    def __init__(self, instant: themis.pygen.Instant, default_value: bool):
-        assert isinstance(instant, themis.pygen.Instant)
+    def __init__(self, instant: themis.cgen.Instant, default_value: bool):
+        assert isinstance(instant, themis.cgen.Instant)
         assert isinstance(default_value, bool)
         self._instant = instant
         self._default_value = default_value
@@ -52,22 +50,22 @@ class BooleanInput:
     def send(self, output: BooleanOutput) -> None:
         assert isinstance(output, BooleanOutput)
         # TODO: default value?
-        self._instant.invoke(output.get_ref(), themis.pygen.Param)
+        self._instant.invoke(output.get_ref(), themis.cgen.Param)
 
     def __bool__(self):
         raise TypeError("Cannot convert IO channels to bool")
 
     @themis.util.memoize_field
     def _press_and_release(self) -> "typing.Tuple[themis.channel.event.EventInput, themis.channel.event.EventInput]":
-        become_true = themis.pygen.Instant(None)
-        become_false = themis.pygen.Instant(None)
+        become_true = themis.cgen.Instant(None)
+        become_false = themis.cgen.Instant(None)
 
-        last_value = themis.pygen.Box(self._default_value)
+        last_value = themis.cgen.Box(self._default_value)
 
-        on_update = themis.pygen.Instant(bool)
-        self._instant.if_unequal(themis.pygen.Param, last_value, on_update, themis.pygen.Param)
-        on_update.set(last_value, themis.pygen.Param)
-        on_update.if_else(themis.pygen.Param, True, become_true, become_false)
+        on_update = themis.cgen.Instant(bool)
+        self._instant.if_unequal(themis.cgen.Param, last_value, on_update, themis.cgen.Param)
+        on_update.set(last_value, themis.cgen.Param)
+        on_update.if_else(themis.cgen.Param, True, become_true, become_false)
 
         return themis.channel.event.EventInput(become_true), themis.channel.event.EventInput(become_false)
 
@@ -85,20 +83,18 @@ class BooleanInput:
         cell_out, cell_in = themis.channel.float.float_cell(when_true._default_value if self._default_value else
                                                             when_false._default_value)
 
-        condition = themis.pygen.Box(self._default_value)
-        var_true = themis.pygen.Box(when_true._default_value)
-        var_false = themis.pygen.Box(when_false._default_value)
+        condition = themis.cgen.Box(self._default_value)
+        var_true = themis.cgen.Box(when_true._default_value)
+        var_false = themis.cgen.Box(when_false._default_value)
 
-        self._instant.set(condition, themis.pygen.Param)
-        self._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true, var_false)
+        self._instant.set(condition, themis.cgen.Param)
+        self._instant.transform("choose_float", cell_out.get_ref(), condition, var_true, var_false)
 
-        when_true._instant.set(var_true, themis.pygen.Param)
-        when_true._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true,
-                                     var_false)
+        when_true._instant.set(var_true, themis.cgen.Param)
+        when_true._instant.transform("choose_float", cell_out.get_ref(), condition, var_true, var_false)
 
-        when_false._instant.set(var_false, themis.pygen.Param)
-        when_false._instant.transform(themisexec.filters.choose_float, cell_out.get_ref(), condition, var_true,
-                                      var_false)
+        when_false._instant.set(var_false, themis.cgen.Param)
+        when_false._instant.transform("choose_float", cell_out.get_ref(), condition, var_true, var_false)
 
         return cell_in
 
@@ -118,8 +114,8 @@ class BooleanInput:
     @property
     @themis.util.memoize_field
     def inverted(self):
-        instant = themis.pygen.Instant(bool)
-        self._instant.transform(themisexec.filters.invert, instant, themis.pygen.Param)
+        instant = themis.cgen.Instant(bool)
+        self._instant.operator_transform("!", instant, None, themis.cgen.Param)
         return InvertedBooleanInput(instant, not self._default_value, base=self)
 
     def __and__(self, other):
@@ -131,12 +127,12 @@ class BooleanInput:
         elif isinstance(other, BooleanInput):
             cell_out, cell_in = boolean_cell(self._default_value and other._default_value)
 
-            value_self = themis.pygen.Box(self._default_value)
-            value_other = themis.pygen.Box(other._default_value)
+            value_self = themis.cgen.Box(self._default_value)
+            value_other = themis.cgen.Box(other._default_value)
 
             for value, input in zip((value_self, value_other), (self, other)):
-                input._instant.set(value, themis.pygen.Param)
-                input._instant.transform(themisexec.filters.and_bool, cell_out.get_ref(), value_self, value_other)
+                input._instant.set(value, themis.cgen.Param)
+                input._instant.operator_transform("&", cell_out.get_ref(), value_self, value_other)
             return cell_in
         else:
             return NotImplemented
@@ -153,7 +149,7 @@ class BooleanInput:
 
 
 class InvertedBooleanInput(BooleanInput):
-    def __init__(self, instant: themis.pygen.Instant, default_value: bool, base: BooleanInput):
+    def __init__(self, instant: themis.cgen.Instant, default_value: bool, base: BooleanInput):
         super().__init__(instant, default_value)
         self._base = base
 
@@ -179,17 +175,17 @@ class BooleanIO:
     @property
     @themis.util.memoize_field
     def toggle(self) -> "themis.channel.event.EventOutput":
-        last_value = themis.pygen.Box(self.input._default_value)
-        self.input._instant.set(last_value, themis.pygen.Param)
+        last_value = themis.cgen.Box(self.input._default_value)
+        self.input._instant.set(last_value, themis.cgen.Param)
 
-        instant = themis.pygen.Instant(None)
-        instant.transform(themisexec.filters.invert, self.output.get_ref(), last_value)
+        instant = themis.cgen.Instant(None)
+        instant.operator_transform("!", self.output.get_ref(), None, last_value)
         return themis.channel.event.EventOutput(instant)
 
 
 # TODO: should we be doing deduplication in cells? probably.
 def boolean_cell(default_value) -> BooleanIO:
-    instant = themis.pygen.Instant(bool)
+    instant = themis.cgen.Instant(bool)
     return BooleanIO(BooleanOutput(instant), BooleanInput(instant, default_value))
 
 

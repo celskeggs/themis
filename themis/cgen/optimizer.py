@@ -1,12 +1,9 @@
-import themisexec.optimization_info
-
-import themis.pygen.templates
+import themis.cgen.templates
 
 _opt_passes = []
 
 wildcard = object()
-CALLBACK_ELIM = ["%s.%s" % (cb.__module__, cb.__name__) for cb in
-                 themisexec.optimization_info.CAN_ELIMINATE_ON_REMOVED_CALLBACK]
+CALLBACK_ELIM = ["start_timer_ns"]  # TODO: READD
 
 
 def tree_match(tree, template):
@@ -96,44 +93,39 @@ def opt_eliminate_empty(root_instant, instants: set):
     # === ELIMINATE DIRECT CALLS ===
     def substitutor(tree):
         assert tree[0] in (
-            themis.pygen.templates.invoke_nullary, themis.pygen.templates.invoke_unary,
-            themis.pygen.templates.invoke_poly)
+            themis.cgen.templates.invoke_nullary, themis.cgen.templates.invoke_unary,
+            themis.cgen.templates.invoke_poly)
         assert tree[1] in to_remove
-        return (themis.pygen.templates.nop,)
+        return (themis.cgen.templates.nop,)
 
     template_list = []
     for instant in to_remove:
-        template_list += [(themis.pygen.templates.invoke_nullary, instant),
-                          (themis.pygen.templates.invoke_unary, instant, wildcard),
-                          (themis.pygen.templates.invoke_poly, instant, wildcard)]
+        template_list += [(themis.cgen.templates.invoke_nullary, instant),
+                          (themis.cgen.templates.invoke_unary, instant, wildcard),
+                          (themis.cgen.templates.invoke_poly, instant, wildcard)]
     replace_in_instants(instants, template_list, substitutor)
 
     # === ELIMINATE INDIRECT USES ===
-    def get_do_nothing():
-        do_nothing = themisexec.filters.do_nothing
-        root_instant._referenced_modules.add(do_nothing.__module__)  # TODO: do this better
-        return "%s.%s" % (do_nothing.__module__, do_nothing.__name__)
-
     def substitutor_2(tree):
-        if tree[0] == themis.pygen.templates.invoke_unary and tree[2] in to_remove:
+        if tree[0] == themis.cgen.templates.invoke_unary and tree[2] in to_remove:
             if tree[1] in CALLBACK_ELIM:
-                return (themis.pygen.templates.nop,)
+                return (themis.cgen.templates.nop,)
             else:
-                return tree[0:2] + (get_do_nothing(),) + tree[3:]
+                return tree[0:2] + ("do_nothing",) + tree[3:]
         else:
-            assert tree[0] == themis.pygen.templates.invoke_poly
+            assert tree[0] == themis.cgen.templates.invoke_poly
             if any(elem in to_remove for elem in tree[2]):
                 if tree[1] in CALLBACK_ELIM:
-                    return (themis.pygen.templates.nop,)
+                    return (themis.cgen.templates.nop,)
                 else:
-                    updated_args = [(arg if arg not in to_remove else get_do_nothing()) for arg in tree[2]]
+                    updated_args = [(arg if arg not in to_remove else "do_nothing") for arg in tree[2]]
                     return tree[0:2] + (updated_args,) + tree[3:]
             else:
                 return tree
 
-    template_list = [(themis.pygen.templates.invoke_poly, wildcard, wildcard)]
+    template_list = [(themis.cgen.templates.invoke_poly, wildcard, wildcard)]
     for instant in to_remove:
-        template_list += [(themis.pygen.templates.invoke_unary, wildcard, instant)]
+        template_list += [(themis.cgen.templates.invoke_unary, wildcard, instant)]
     replace_in_instants(instants, template_list, substitutor_2, replace_before=True)
 
     return root_instant, instants
@@ -142,8 +134,8 @@ def opt_eliminate_empty(root_instant, instants: set):
 @opt_pass
 def opt_eliminate_nops(root_instant, instants):
     def walker(tree):
-        if type(tree) == list and (themis.pygen.templates.nop,) in tree:
-            return True, [elem for elem in tree if elem != (themis.pygen.templates.nop,)]
+        if type(tree) == list and (themis.cgen.templates.nop,) in tree:
+            return True, [elem for elem in tree if elem != (themis.cgen.templates.nop,)]
         return False, None
 
     replace_walk_in_instants(instants, walker)
@@ -153,12 +145,12 @@ def opt_eliminate_nops(root_instant, instants):
 def check_get_simple_call(instant):
     if len(instant._body) != 1: return
     if instant._param_type is None:
-        if instant._body[0][0] == themis.pygen.templates.invoke_nullary \
-                and isinstance(instant._body[0][1], themis.pygen.Instant):
+        if instant._body[0][0] == themis.cgen.templates.invoke_nullary \
+                and isinstance(instant._body[0][1], themis.cgen.Instant):
             return instant._body[0][1]
     else:
-        if instant._body[0][0] == themis.pygen.templates.invoke_unary \
-                and isinstance(instant._body[0][1], themis.pygen.Instant) and instant._body[0][2] == instant._param:
+        if instant._body[0][0] == themis.cgen.templates.invoke_unary \
+                and isinstance(instant._body[0][1], themis.cgen.Instant) and instant._body[0][2] == instant._param:
             return instant._body[0][1]
 
 
@@ -189,7 +181,7 @@ def calculate_refcounts(root_instant, instants):
 
     for instant in instants:
         def walker(tree):
-            if isinstance(tree, themis.pygen.Instant):
+            if isinstance(tree, themis.cgen.Instant):
                 refs[tree].append(instant)
 
         tree_walk_ro(instant._body, walker)
@@ -201,7 +193,7 @@ def get_modified_variables(instant):
     refed = {instant._param} if instant._param_type is not None else set()
 
     def walker(tree):
-        if type(tree) == tuple and tree[0] == themis.pygen.templates.set:
+        if type(tree) == tuple and tree[0] == themis.cgen.templates.set:
             refed.add(tree[1])
 
     tree_walk_ro(instant._body, walker)
@@ -224,18 +216,19 @@ def opt_inline(root_instant, instants: set):
             print("VARDUP BYPASS", instant._instant, "INTO", refed_in._instant)
             continue
         found_line = [i for i, line in enumerate(refed_in._body)
-                      if line[0] in (themis.pygen.templates.invoke_nullary, themis.pygen.templates.invoke_unary)
+                      if line[0] in (themis.cgen.templates.invoke_nullary, themis.cgen.templates.invoke_unary)
                       and line[1] == instant]
         if not found_line:
             continue
         assert len(found_line) == 1
         line_id = found_line[0]
-        if refed_in._body[line_id][0] == themis.pygen.templates.invoke_nullary:
+        if refed_in._body[line_id][0] == themis.cgen.templates.invoke_nullary:
             assert instant._param_type is None
             refed_in._body[line_id:line_id + 1] = instant._body
         else:
             assert instant._param_type is not None
-            refed_in._body[line_id:line_id + 1] = [(themis.pygen.templates.set, instant._param,
+            refed_in._body[line_id:line_id + 1] = [(themis.cgen.templates.set_decl,
+                                                    themis.cgen.PARAM_TYPES[instant._param_type], instant._param,
                                                     refed_in._body[line_id][2])] + instant._body
         actually_inlined.append(instant)
 

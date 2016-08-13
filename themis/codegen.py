@@ -1,39 +1,38 @@
 import enum
 
-import themisexec.runloop
-
-import themis.pygen
+import themis.cgen
 import themis.util
 
 
 class InitPhase(enum.Enum):
     PHASE_INIT_CODE = 1
-    PHASE_INIT_IO = 2
-    PHASE_BEGIN = 3
+    PHASE_PREINIT_IO = 2
+    PHASE_INIT_IO = 3
+    PHASE_BEGIN = 4
 
 
 class GenerationContext:
     _context_param = themis.util.Parameter(None)
 
     def __init__(self):
-        self._root_init = themis.pygen.Instant(None)
-        self._initialize = themis.pygen.Instant(None)
-        self._root_init.transform(themisexec.runloop.enter_loop, None, self._initialize)
+        self._root_init = themis.cgen.Instant(None)
+        self._initialize = themis.cgen.Instant(None)
+        self._root_init.transform("enter_loop", None, self._initialize)
         self._init_phases = {}
         for phase in InitPhase:
-            inst = themis.pygen.Instant(None)
+            inst = themis.cgen.Instant(None)
             self._initialize.invoke(inst)
             self._init_phases[phase] = inst
         self._properties = {}
 
-    def add_init(self, instant: themis.pygen.Instant, phase: InitPhase, arg=None):
+    def add_init(self, instant: themis.cgen.Instant, phase: InitPhase, arg=None):
         self._init_phases[phase].invoke(instant, arg)
 
     def add_init_call(self, target, phase: InitPhase, *args):
         self._init_phases[phase].transform(target, None, *args)
 
     def generate_code(self):
-        return themis.pygen.generate_code(self._root_init)
+        return themis.cgen.generate_code(self._root_init)
 
     def get_prop_init(self, key, default_producer):
         if key not in self._properties:
@@ -57,7 +56,7 @@ class GenerationContext:
         return GenerationContext._context_param.parameterize(self)
 
 
-def add_init(instant: themis.pygen.Instant, phase: InitPhase, arg=None):
+def add_init(instant: themis.cgen.Instant, phase: InitPhase, arg=None):
     GenerationContext.get_context().add_init(instant, phase, arg)
 
 

@@ -1,7 +1,5 @@
 from collections import namedtuple
 
-import themisexec.filters
-
 import themis.channel
 
 # all in milliseconds
@@ -19,5 +17,4 @@ TALON_SRX = SpeedControlSpecs(0.997, 1.48, 1.50, 1.52, 2.004, 200.0)
 
 
 def filter_to(spec: SpeedControlSpecs, out: themis.channel.FloatOutput) -> themis.channel.FloatOutput:
-    return out.filter(themisexec.filters.pwm_map, (),
-                      (spec.rev_max, spec.rev_min, spec.rest, spec.fwd_min, spec.fwd_max))
+    return out.filter("pwm_map", (), (spec.rev_max, spec.rev_min, spec.rest, spec.fwd_min, spec.fwd_max))
