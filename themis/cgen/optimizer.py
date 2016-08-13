@@ -3,7 +3,7 @@ import themis.cgen.templates
 _opt_passes = []
 
 wildcard = object()
-CALLBACK_ELIM = ["start_timer_ns"]  # TODO: READD
+CALLBACK_ELIM = ["start_timer_ns"]
 
 
 def tree_match(tree, template):

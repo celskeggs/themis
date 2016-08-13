@@ -10,7 +10,7 @@ This code is in very early development, and is currently the wrong tool to use f
 
 # Installation
 
-Installation isn't possible yet. At some point, there will be a pip package.
+Installation isn't possible yet. At some point, there will be a pypi package.
 
 # Documentation
 
@@ -18,7 +18,7 @@ There is no documentation yet.
 
 # License
 
-The license hasn't been decided yet.
+This software is licensed under the MIT license. See LICENSE.txt for details.
 
 # Authorship
 
