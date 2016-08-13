@@ -1,2 +1,5 @@
 workspace.xml
+build
+dist
+themis.egg-info
 __pycache__
