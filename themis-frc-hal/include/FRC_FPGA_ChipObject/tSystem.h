@@ -4,7 +4,7 @@
 #ifndef __tSystem_h__
 #define __tSystem_h__
 
-#include "fpgainterfacecapi/NiFpga.h"
+#include "FRC_FPGA_ChipObject/fpgainterfacecapi/NiFpga.h"
 typedef NiFpga_Status tRioStatusCode;
 
 #define FRC_FPGA_PRELOAD_BITFILE

@@ -4,7 +4,7 @@
 #ifndef __nFRC_2016_16_1_0_Power_h__
 #define __nFRC_2016_16_1_0_Power_h__
 
-#include "tSystemInterface.h"
+#include "FRC_FPGA_ChipObject/tSystemInterface.h"
 
 namespace nFPGA
 {
