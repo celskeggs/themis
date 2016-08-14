@@ -1,1 +1,6 @@
 include LICENSE.txt
+recursive-include themis-frc-hal/include *.h *.hpp
+recursive-include themis-frc-hal/lib *.cpp
+recursive-include themis-frc-hal/ni-libraries *.so *.so.*
+recursive-include themis-frc-hal/themis *.c *.cpp *.h
+include themis-frc-hal/CMakeLists.txt
