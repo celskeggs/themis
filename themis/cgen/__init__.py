@@ -53,7 +53,7 @@ class Instant:
     def is_empty(self):
         return not self._body
 
-    def _validate_type(self, arg) -> typing.Tuple[typing.Type, str]:
+    def _validate_type(self, arg) -> typing.Tuple["typing.Type", str]:
         assert arg is not None
         if arg is Param:
             return self._param_type, self._param
@@ -73,7 +73,7 @@ class Instant:
         arg_type, arg_value = self._validate_type(arg)
         return arg_value
 
-    def _validate_gen(self, arg, expected_type: typing.Type) -> str:
+    def _validate_gen(self, arg, expected_type: "typing.Type") -> str:
         arg_type, arg_value = self._validate_type(arg)
         assert expected_type is not None
         assert arg_type == expected_type, "Type mismatch: got %s but expected %s" % (arg_type, expected_type)
