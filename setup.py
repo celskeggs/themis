@@ -19,7 +19,7 @@ def generate_prebuilt_files(build_lib):
 
         shutil.copyfile(os.path.join(builddir, SO_NAME),
                         os.path.join(build_lib, "themis", SO_NAME))
-        shutil.copyfile(os.path.join(builddir, HEADER_NAME),
+        shutil.copyfile(os.path.join(source_dir, HEADER_NAME),
                         os.path.join(build_lib, "themis", os.path.basename(HEADER_NAME)))
     print("finished compiling frc hal")
 
