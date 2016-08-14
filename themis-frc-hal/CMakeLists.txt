@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
-project(hal)
+project(themis-frc)
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 set(ARM_PREFIX arm-frc-linux-gnueabi)
 set(CMAKE_SYSTEM_NAME Linux)
@@ -121,5 +124,26 @@ set(SOURCE_FILES
     include/frccansae/CANDeviceInterface.h
     themis/themis.c themis/themis.h themis/runloop.c themis/timers.c themis/frc.cpp)
 
-add_library(hal ${SOURCE_FILES})
-target_include_directories(hal PUBLIC include)
+add_library(frc_netcomm SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_netcomm PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libFRC_NetworkCommunication.so.16.0.0)
+
+add_library(frc_nifpga SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_nifpga PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libNiFpga.so.15.0.0)
+
+add_library(frc_chipobject SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_chipobject PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libRoboRIO_FRC_ChipObject.so.16.0.0)
+
+add_library(frc_visa SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_visa PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libvisa.so)
+
+add_library(frc_spi SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_spi PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libspi.so.1.0.0)
+
+add_library(frc_i2c SHARED IMPORTED)
+SET_PROPERTY(TARGET frc_i2c PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-libraries/libi2c.so.1.0.0)
+
+add_library(themis-frc SHARED ${SOURCE_FILES})
+target_include_directories(themis-frc PUBLIC include)
+target_link_libraries(themis-frc Threads::Threads frc_netcomm frc_nifpga frc_chipobject frc_visa frc_spi frc_i2c)
+
+install(TARGETS themis-frc LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/)

@@ -3,3 +3,4 @@ build
 dist
 themis.egg-info
 __pycache__
+/themis-frc-hal/libthemis-frc.so
