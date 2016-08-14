@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="CPP_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/lib/HALAthena.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Solenoid.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/SerialPort.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Task.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Accelerometer.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Analog.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Interrupts.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Compressor.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/PDP.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/HAL.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Digital.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/ctre/PDP.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/ctre/PCM.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/ctre/CtreCanNode.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/ctre/CanTalonSRX.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/cpp/priority_mutex.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/cpp/Semaphore.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/cpp/Resource.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Notifier.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Utilities.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Power.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/Semaphore.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/CMakeLists.txt" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/spilib/spi-lib.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/FRC_FPGA_ChipObject_Aliases.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/printFpgaVersion.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/nInterfaceGlobals.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tAlarm.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tSysWatchdog.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tWatchdog.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tAccumulator.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tDIO.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tSolenoid.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tAnalogTrigger.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tAI.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tCounter.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tEncoder.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tSPI.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tGlobal.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tInterrupt.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRuntimeFPGANamespace/tDMA.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/tSystemInterface.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/tDMAManager.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/tDMAChannelDescriptor.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/RoboRIO_FRC_ChipObject_Aliases.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nInvariantFPGANamespace/tGlobal.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nInvariantFPGANamespace/tAI.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nInvariantFPGANamespace/nInterfaceGlobals.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nInvariantFPGANamespace/tLoadOut.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/tInterruptManager.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/fpgainterfacecapi/NiFpga.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/tSystem.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/nInterfaceGlobals.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tCounter.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAO.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAlarm.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tPower.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tPWM.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tRelay.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tDMA.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tDIO.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAccumulator.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAnalogTrigger.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAI.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tAccel.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tEncoder.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tSysWatchdog.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tSPI.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tGlobal.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tInterrupt.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_FPGA_ChipObject/nRoboRIO_FPGANamespace/tBIST.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ChipObject.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/i2clib/i2c-lib.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/visa/visa.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/visa/visatype.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/CANInterfacePlugin.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/LoadOut.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/CANSessionMux.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/UsageReporting.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/FRCComm.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/FRC_NetworkCommunication/AICalibration.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/frccansae/CANDeviceInterface.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Utilities.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Power.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/CanTalonSRX.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/SerialPort.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/CAN.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Task.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Accelerometer.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Solenoid.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Analog.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Interrupts.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Compressor.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/PDP.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/HAL.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Digital.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/cpp/priority_condition_variable.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/cpp/Resource.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/cpp/priority_mutex.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/cpp/Semaphore.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Semaphore.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Port.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Errors.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/HAL/Notifier.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/Log.hpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ctre/ctre.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ctre/PCM.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ctre/PDP.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ctre/CtreCanNode.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/include/ctre/ctre_frames.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/themis/themis.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/themis/runloop.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/themis/timers.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/themis/themis.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/themis/frc.cpp" isTestSource="false" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="Header Search Paths">
+        <CLASSES>
+          <root url="file:///usr/lib/gcc/arm-frc-linux-gnueabi/4.9.3/include-fixed" />
+          <root url="file:///usr/lib/gcc/arm-frc-linux-gnueabi/4.9.3/include" />
+          <root url="file:///usr/arm-frc-linux-gnueabi/include" />
+          <root url="file:///usr/arm-frc-linux-gnueabi/usr/include" />
+        </CLASSES>
+        <SOURCES>
+          <root url="file:///usr/lib/gcc/arm-frc-linux-gnueabi/4.9.3/include-fixed" />
+          <root url="file:///usr/lib/gcc/arm-frc-linux-gnueabi/4.9.3/include" />
+          <root url="file:///usr/arm-frc-linux-gnueabi/include" />
+          <root url="file:///usr/arm-frc-linux-gnueabi/usr/include" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+  </component>
+</module>
