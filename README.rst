@@ -13,7 +13,11 @@ Features
 Installation
 ============
 
-Installation isn't possible yet. At some point, there will be a pypi package.
+You will need the FRC toolchain, which you can get from `the official wpilib website`_.
+
+You can install themis via pip::
+
+  pip install themis
 
 Documentation
 =============
@@ -29,3 +33,5 @@ Authorship
 ==========
 
 This framework is maintained by Cel Skeggs, who can be reached as @celskeggs on twitter or at robotics [at] celskeggs [dot] com.
+
+.. _the official wpilib website: http://first.wpi.edu/FRC/roborio/toolchains/
