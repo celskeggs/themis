@@ -43,7 +43,7 @@ void gpio_init_input_interrupt(uint8_t gpio_pin, uint8_t interrupt_id);
 void gpio_start_interrupt(int gpio_pin, int interrupt_id, callback cb);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 #endif //THEMIS_H

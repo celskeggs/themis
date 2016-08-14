@@ -31,7 +31,7 @@ setup(
     ],
     keywords='robotics dataflow framework embedded',
 
-    packages=find_packages(exclude=["wpilib"]),
+    packages=find_packages(exclude=["themis-frc-hal"]),
     package_data={
         'themis': ['package_data.dat'],
     }

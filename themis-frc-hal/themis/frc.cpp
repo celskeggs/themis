@@ -1,8 +1,6 @@
 #include <pthread.h>
 #include "themis.h"
-#include "../lib/FRC_NetworkCommunication/FRCComm.h"
 #include <assert.h>
-#include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,8 +124,8 @@ int get_robot_mode() {
 }
 
 double get_joystick_axis(int joy_i, int axis) {
-    assert(0 <= joy_i < JOYSTICK_NUM);
-    assert(0 <= axis < AXIS_NUM);
+    assert(0 <= joy_i && joy_i < JOYSTICK_NUM);
+    assert(0 <= axis && axis < AXIS_NUM);
     struct HALJoystickAxes axes = stick_axes[joy_i];
     if (axis >= axes.count) {
         return 0.0;
@@ -138,8 +136,8 @@ double get_joystick_axis(int joy_i, int axis) {
 }
 
 bool get_joystick_button(int joy_i, int btn) {
-    assert(0 <= joy_i < JOYSTICK_NUM);
-    assert(0 <= btn < MAX_BUTTON_NUM);
+    assert(0 <= joy_i && joy_i < JOYSTICK_NUM);
+    assert(0 <= btn && btn < MAX_BUTTON_NUM);
     struct HALJoystickButtons buttons = stick_buttons[joy_i];
     if (btn >= buttons.count) {
         return false;
@@ -261,6 +259,8 @@ struct interrupt_params {
     bool run; // TODO: eliminate or use
 };
 
+static void *gpio_interrupt_handler_thread(void*);
+
 void gpio_start_interrupt(int gpio_pin, int interrupt_id, callback cb) {
     void *interrupt_port = interrupts[interrupt_id];
     assert(interrupt_port != NULL);
@@ -285,8 +285,8 @@ static void *gpio_interrupt_handler_thread(void *param) {
     struct interrupt_params *params = (struct interrupt_params *) param;
     while (params->run) {
         int32_t status;
-        // TODO: optimize based on timing out or not
-        bool timed_out = waitForInterrupt(params->interrupt_port, 10.0, false, &status) == 0;
+        // TODO: optimize based on timing out or not - timed out if the return value is 0.
+        waitForInterrupt(params->interrupt_port, 10.0, false, &status);
         HAL_CHECK(status, "gpio subsystem critical failure");
         queue_event(params->cb);
     }
