@@ -1,8 +1,31 @@
-from os import path
-
+import os
+import shutil
+import tempfile
+import subprocess
 from setuptools import setup, find_packages
+from setuptools.command.build_py import build_py as base_build_py
 
-here = path.abspath(path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+def generate_prebuilt_files(build_lib):
+    print("compiling frc hal...")
+    with tempfile.TemporaryDirectory() as builddir:
+        source_dir = os.path.realpath(os.path.join(here, "themis-frc-hal"))
+        subprocess.check_call(["cmake", source_dir], cwd=builddir)
+        subprocess.check_call(["make"], cwd=builddir)
+        SO_NAME = "libthemis-frc.so"
+
+        shutil.copyfile(os.path.join(builddir, SO_NAME), os.path.join(build_lib, "themis", SO_NAME))
+    print("finished compiling frc hal")
+
+
+class build_py(base_build_py):  # TODO: do this the "correct way", whatever that is
+    def run(self):
+        super().run()
+        # run after to make sure the output directory is created
+        generate_prebuilt_files(self.build_lib)
+
 
 setup(
     name='themis',
@@ -13,6 +36,8 @@ setup(
     url='https://github.com/celskeggs/themis',
     author='Cel Skeggs',
     author_email='robotics-public@celskeggs.com',
+
+    cmdclass={"build_py": build_py},
 
     license='MIT',
 

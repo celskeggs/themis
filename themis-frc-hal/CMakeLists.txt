@@ -145,5 +145,3 @@ SET_PROPERTY(TARGET frc_i2c PROPERTY IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/ni-li
 add_library(themis-frc SHARED ${SOURCE_FILES})
 target_include_directories(themis-frc PUBLIC include)
 target_link_libraries(themis-frc Threads::Threads frc_netcomm frc_nifpga frc_chipobject frc_visa frc_spi frc_i2c)
-
-install(TARGETS themis-frc LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/)
