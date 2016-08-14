@@ -1,5 +1,7 @@
 import typing
+import binascii
 
+import themis.cbuild
 import themis.auto
 import themis.channel
 import themis.codegen
@@ -187,12 +189,26 @@ class Joystick(themis.joystick.Joystick):
 def deploy_roboRIO(team_number: int, code):
     print("=============================================")
     print("Would deploy code to", team_number)
-    print(code)
+    # TODO: don't output to this kind of fixed path
+    with open("/tmp/output.elf", "wb") as fout:
+        fout.write(code)
+    print("/tmp/output.elf")
     print("=============================================")
+
+
+GCC_PREFIX = "arm-frc-linux-gnueabi-"
+# note: these flags are duplicated in themis-frc-hal/CMakeLists.txt
+C_FLAGS = "-Wformat=2 -Wall -Wextra -Werror -pedantic -Wno-psabi -Wno-unused-parameter -fPIC -Os -g0 -rdynamic " \
+          "-std=c11 -D_POSIX_C_SOURCE=199309L"
+
+
+def compile_roboRIO(c_code):
+    return themis.cbuild.build_program(c_code, "themis.h", "libthemis-frc.so", GCC_PREFIX, C_FLAGS, __name__)
 
 
 def robot(team_number: int, robot_constructor: typing.Callable[[RoboRIO], None]):
     with themis.codegen.GenerationContext().enter():
         roboRIO = RoboRIO()
         robot_constructor(roboRIO)
-        deploy_roboRIO(team_number, themis.codegen.generate_code())
+        compiled_code = compile_roboRIO(themis.codegen.generate_code())
+        deploy_roboRIO(team_number, compiled_code)

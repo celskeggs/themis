@@ -15,8 +15,12 @@ def generate_prebuilt_files(build_lib):
         subprocess.check_call(["cmake", source_dir], cwd=builddir)
         subprocess.check_call(["make"], cwd=builddir)
         SO_NAME = "libthemis-frc.so"
+        HEADER_NAME = "themis/themis.h"
 
-        shutil.copyfile(os.path.join(builddir, SO_NAME), os.path.join(build_lib, "themis", SO_NAME))
+        shutil.copyfile(os.path.join(builddir, SO_NAME),
+                        os.path.join(build_lib, "themis", SO_NAME))
+        shutil.copyfile(os.path.join(builddir, HEADER_NAME),
+                        os.path.join(build_lib, "themis", os.path.basename(HEADER_NAME)))
     print("finished compiling frc hal")
 
 
@@ -38,6 +42,8 @@ setup(
     author_email='robotics-public@celskeggs.com',
 
     cmdclass={"build_py": build_py},
+
+    install_requires=["setuptools"],  # for pkg_resources
 
     license='MIT',
 

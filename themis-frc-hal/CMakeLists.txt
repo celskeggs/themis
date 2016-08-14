@@ -8,6 +8,7 @@ set(ARM_PREFIX arm-frc-linux-gnueabi)
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_CXX_COMPILER ${ARM_PREFIX}-g++)
 set(CMAKE_C_COMPILER ${ARM_PREFIX}-gcc)
+# note: these flags are duplicated in themis/cbuild.py
 set(SHARED_FLAGS "-Wformat=2 -Wall -Wextra -Werror -pedantic -Wno-psabi -Wno-unused-parameter -Wno-error=deprecated-declarations -fPIC -Os -g0 -rdynamic")
 set(CMAKE_CXX_FLAGS "-std=c++1y ${SHARED_FLAGS}")
 set(CMAKE_C_FLAGS "-std=c11 -D_POSIX_C_SOURCE=199309L ${SHARED_FLAGS}")
